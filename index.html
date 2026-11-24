@@ -56,7 +56,32 @@ textarea{resize:vertical;min-height:110px;line-height:1.45}
 .chip{padding:9px 13px;border-radius:99px;border:1px solid var(--line);background:#fff;font-size:14px;cursor:pointer}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .chip.ro{cursor:default}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.modes{display:grid;gap:8px}
+.mode{text-align:left;padding:13px 14px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer}
+.mode b{display:block;font-size:16px} .mode span{font-size:13px;color:var(--muted)}
+.mode.on{background:var(--ink);color:#fff;border-color:var(--ink)} .mode.on span{color:#cfc6cd}
+.mode.ro{cursor:default}
+.scoreline{display:flex;justify-content:space-between;align-items:center;margin:12px 2px 14px;font-weight:600}
+.scoreline .A{color:var(--A)} .scoreline .B{color:var(--B)}
+.turn{text-align:center;font-family:"Fraunces",Georgia,serif;font-size:22px;margin:0 0 14px}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.sq{aspect-ratio:1;border-radius:16px;border:1px solid var(--line);background:var(--paper);padding:8px;font-size:13px;line-height:1.25;color:#5d525b;cursor:pointer;display:grid;place-items:center;text-align:center;position:relative}
+.sq[disabled]{cursor:default}
+.sq.A,.sq.B{color:#fff;font-family:"Fraunces",Georgia,serif;font-size:clamp(30px,10vw,46px)}
+.sq.A{background:var(--A);border-color:var(--A)} .sq.B{background:var(--B);border-color:var(--B)}
+.sq.win{box-shadow:0 0 0 4px var(--ink)}
+.sq.last{animation:pop .4s}
+.claim{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px 16px;margin-bottom:14px}
+.claim .n{font-weight:700}
+.claim p{margin:4px 0 0;font-family:"Fraunces",Georgia,serif;font-size:21px;line-height:1.25}
+.rps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 16px}
+.rps button{padding:16px 6px;border-radius:18px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:14px}
+.rps button span{display:block;font-size:40px;line-height:1.2}
+.rps button.on{border-color:var(--me);box-shadow:inset 0 0 0 2px var(--me)}
+.face{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center;margin:10px 0 16px}
+.face .big{font-size:56px;line-height:1} .face small{display:block;font-weight:600;margin-top:6px}
+.face .vs{color:var(--muted);font-size:14px}
 .seg .chip{border-radius:14px;text-align:center;padding:10px 6px} .seg small{display:block;opacity:.7;font-size:12px}
 .progress{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:10px 2px 8px}
 .bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:16px}
@@ -145,6 +170,12 @@ const CATS = {
   plans:   'Plans vs. spontaneity',
   love:    'Love & care',
   playful: 'Playful',
+  dates:   'Dates & adventures',
+  home:    'Home & habits',
+  story:   'Our story',
+  past:    'Growing up',
+  future:  'Dreams & someday',
+  flirty:  'Flirty',
   deep:    'Deeper',
 };
 // type: s = spectrum (place yourself + guess partner), c = choice (pick + guess), o = open answer
@@ -256,9 +287,224 @@ const CARDS = [
    talk:'Pick a date for one of them before you put the phones down.'},
   {id:'x10',cat:'deep', d:3, type:'o', q:'When did you first think "I really like this person"?',
    talk:'What did they do, exactly?'},
+  {id:'x11',cat:'deep', d:3, type:'o', q:'What is something you are proud of that you rarely mention?',
+   talk:'Tell them you are proud of them too.'},
+  {id:'x12',cat:'deep', d:3, type:'s', q:'Asking for help', l:'Really hard for me', r:'Easy, I ask all the time',
+   talk:'How can the other one make it easier to ask?'},
+  {id:'x13',cat:'deep', d:3, type:'s', q:'When something worries you', l:'I keep it to myself', r:'I say it straight away',
+   talk:'What is a gentle way to ask "is something on your mind?"'},
+
+  // More warm-up
+  {id:'w6', cat:'warmup', d:1, type:'s', q:'Tonight, if nothing was booked', l:'Couch, blanket, film', r:'Text five people, see what happens',
+   talk:'What would tonight look like if you each got half of it?'},
+  {id:'w7', cat:'warmup', d:1, type:'c', q:'Best kind of weather', o:['Rainy, stay indoors','Crisp and sunny','Hot beach day','A proper storm'],
+   talk:'Describe your perfect day in that weather.'},
+  {id:'w8', cat:'warmup', d:1, type:'o', q:'What was the best part of your week so far?',
+   talk:'What made it good? Could you do more of that?'},
+
+  // More energy & recharge
+  {id:'e9', cat:'energy', d:1, type:'s', q:'Having people over', l:'Lovely, once in a while', r:'Open house, every weekend',
+   talk:'How often would hosting together feel right?'},
+  {id:'e10',cat:'energy', d:1, type:'c', q:'A long drive together. You want…', o:['Comfortable quiet','A podcast','Singing loudly','Deep chats the whole way'],
+   talk:'Plan the soundtrack for your next trip.'},
+  {id:'e11',cat:'energy', d:2, type:'o', q:'Who gives you energy, and who quietly drains it?',
+   talk:'How can the other one help with the draining ones?'},
+  {id:'e12',cat:'energy', d:2, type:'s', q:'Ideal number of plans in a week', l:'One, maybe two', r:'Every night if I can',
+   talk:'Agree on a number that leaves room for both of you.'},
+
+  // More plans vs spontaneity
+  {id:'p9', cat:'plans', d:1, type:'s', q:'Restaurant bookings', l:'Booked weeks ahead', r:'Walk in and hope',
+   talk:'Name one place worth booking ahead, and one worth leaving to chance.'},
+  {id:'p10',cat:'plans', d:1, type:'c', q:'Surprise day off tomorrow, announced tonight. You…', o:['Plan it out tonight','Sleep in and see','Text friends right away','Book something impulsive'],
+   talk:'What would a surprise day off look like for you both?'},
+  {id:'p11',cat:'plans', d:2, type:'o', q:'Tell a plan that went wrong in a way you ended up loving.',
+   talk:'Does the other one have a story like that too?'},
+  {id:'p12',cat:'plans', d:1, type:'s', q:'Packing for a trip', l:'List made a week before', r:'Ten minutes before the taxi',
+   talk:'Who should be in charge of the passports?'},
+
+  // More love & care
+  {id:'l10',cat:'love', d:2, type:'s', q:'Needing reassurance', l:'Rarely, I just know', r:'Often, and that is okay',
+   talk:'What is a reassuring thing the other one could say more often?'},
+  {id:'l11',cat:'love', d:1, type:'c', q:'Pick the best date', o:['Cooking at home together','A fancy dinner out','Something we have never done','Wandering with no plan'],
+   talk:'Book the winner.'},
+  {id:'l12',cat:'love', d:2, type:'o', q:'What is something you want your partner to always know about you?',
+   talk:'Say thank you for sharing it.'},
+  {id:'l13',cat:'love', d:2, type:'c', q:'When you are ill, you want…', o:['To be left alone to sleep','Soup and quiet company','Lots of fussing','Distraction: films and chat'],
+   talk:'Remember this one for flu season.'},
+
+  // More playful
+  {id:'f7', cat:'playful', d:1, type:'c', q:'Your superpower would be…', o:['Teleporting','Pausing time','Reading minds','Never needing sleep'],
+   talk:'What would you do with it first, together?'},
+  {id:'f8', cat:'playful', d:1, type:'s', q:'Board games', l:'Here for the snacks', r:'I will win at all costs',
+   talk:'Pick a game to play together this week.'},
+  {id:'f9', cat:'playful', d:1, type:'o', q:'What is your most useless talent?',
+   talk:'Demonstrate it. Now.'},
+  {id:'f10',cat:'playful', d:1, type:'c', q:'Your theme song would be…', o:['Something calm and acoustic','A dance floor anthem','A dramatic film score','A cartoon theme tune'],
+   talk:'Play each other a song that fits.'},
+
+  // Dates & adventures
+  {id:'d1', cat:'dates', d:1, type:'c', q:'Ideal date night', o:['Cosy night in with good food','Live music','Long walk, then a pub','Something with a thrill'],
+   talk:'Plan the next one using both answers.'},
+  {id:'d2', cat:'dates', d:1, type:'s', q:'Adventure level', l:'Gentle walk with a view', r:'Jump out of a plane',
+   talk:'Find one adventure halfway between you.'},
+  {id:'d3', cat:'dates', d:1, type:'o', q:'What is a place you would love to take your partner?',
+   talk:'When?'},
+  {id:'d4', cat:'dates', d:1, type:'c', q:'A weekend away. Where?', o:['Quiet countryside','A big new city','By the sea','Wherever the cheapest flight goes'],
+   talk:'Pick a month for it.'},
+  {id:'d5', cat:'dates', d:1, type:'s', q:'Dressing up for a date', l:'Comfy is the dress code', r:'Any excuse to dress up',
+   talk:'Plan one of each.'},
+  {id:'d6', cat:'dates', d:1, type:'o', q:'What is a small adventure we could have this weekend on a tiny budget?',
+   talk:'Pick one and do it.'},
+  {id:'d7', cat:'dates', d:1, type:'c', q:'A festival weekend is…', o:['My idea of heaven','Fine for one day','Fine with a quiet tent to escape to','A hard no'],
+   talk:'Is there a smaller event you would both enjoy?'},
+  {id:'d8', cat:'dates', d:2, type:'s', q:'Surprise dates', l:'Tell me the plan, please', r:'Blindfold me, I love it',
+   talk:'How much should the other one reveal before a surprise?'},
+
+  // Home & habits
+  {id:'h1', cat:'home', d:1, type:'s', q:'Tidiness', l:'Lived-in and cosy', r:'Everything in its place',
+   talk:'Which kind of mess bothers each of you most?'},
+  {id:'h2', cat:'home', d:1, type:'s', q:'Bedtime', l:'Early to bed', r:'Proper night owl',
+   talk:'How would you make two body clocks work?'},
+  {id:'h3', cat:'home', d:1, type:'c', q:'Sunday morning', o:['Lie-in','Big slow breakfast','Gym or a run','Out the door early'],
+   talk:'Design a Sunday morning you would both love.'},
+  {id:'h4', cat:'home', d:1, type:'c', q:'Cooking together is…', o:['Romantic','Chaos','A chance to show off','Best with one cooking, one keeping company'],
+   talk:'Pick a dish to cook together.'},
+  {id:'h5', cat:'home', d:2, type:'o', q:'What is a small habit of yours your partner should know about?',
+   talk:'Is there one you are a little shy about?'},
+  {id:'h6', cat:'home', d:1, type:'s', q:'Phones at bedtime', l:'Phones away', r:'Scroll until I fall asleep',
+   talk:'Try a phone-free half hour together?'},
+  {id:'h7', cat:'home', d:1, type:'c', q:'In the thermostat war, you are…', o:['Always cold','Always hot','Fine either way','Window open, always'],
+   talk:'Negotiate a truce.'},
+
+  // Our story
+  {id:'s1', cat:'story', d:2, type:'o', q:'What was your first impression of your partner?',
+   talk:'Was it right?'},
+  {id:'s2', cat:'story', d:2, type:'o', q:'What is your favourite moment of yours together so far?',
+   talk:'Recreate a little piece of it soon.'},
+  {id:'s3', cat:'story', d:1, type:'s', q:'How nervous were you on your first date?', l:'Totally calm', r:'Heart pounding',
+   talk:'What gave it away?'},
+  {id:'s4', cat:'story', d:2, type:'o', q:'Who made the first move, in your version of the story?',
+   talk:'Now hear the other version.'},
+  {id:'s5', cat:'story', d:2, type:'o', q:'What did you say when you first told a friend about your partner?',
+   talk:'What did the friend say back?'},
+  {id:'s6', cat:'story', d:2, type:'o', q:'What is something about your partner that surprised you?',
+   talk:'Good surprise or confusing surprise?'},
+  {id:'s7', cat:'story', d:2, type:'o', q:'What is a tiny detail from your time together that you remember and they might not?',
+   talk:'Do they remember it now?'},
+
+  // Growing up
+  {id:'g1', cat:'past', d:1, type:'c', q:'As a kid you were…', o:['The quiet reader','The class clown','The organiser','Always outside, always muddy'],
+   talk:'What is still true about that kid?'},
+  {id:'g2', cat:'past', d:2, type:'s', q:'Family gatherings growing up', l:'Small and quiet', r:'Loud and chaotic',
+   talk:'Which kind feels like home to you now?'},
+  {id:'g3', cat:'past', d:1, type:'o', q:'What did you want to be when you grew up?',
+   talk:'Is any of it still in you?'},
+  {id:'g4', cat:'past', d:2, type:'o', q:'What smell, song or food takes you straight back to childhood?',
+   talk:'Share it with each other soon.'},
+  {id:'g5', cat:'past', d:1, type:'c', q:'At school you were…', o:['The teacher\'s favourite','Quietly top of the class','Always late','Running the school play'],
+   talk:'What story proves it?'},
+  {id:'g6', cat:'past', d:3, type:'o', q:'Who shaped you most growing up?',
+   talk:'What did they teach you that you still use?'},
+
+  // Dreams & someday
+  {id:'z1', cat:'future', d:2, type:'s', q:'Where you would want to live someday', l:'Quiet countryside', r:'Middle of a big city',
+   talk:'What would the place in the middle look like?'},
+  {id:'z2', cat:'future', d:2, type:'o', q:'What is something on your bucket list?',
+   talk:'Could any of it become a shared one?'},
+  {id:'z3', cat:'future', d:2, type:'c', q:'If money did not matter for a year, you would…', o:['Travel everywhere','Learn something new','Build or make something','Do nothing, beautifully'],
+   talk:'What is a tiny version you could do this year?'},
+  {id:'z4', cat:'future', d:3, type:'o', q:'What does a really good life look like for you in five years?',
+   talk:'Keep it light: which parts excite you most?'},
+  {id:'z5', cat:'future', d:1, type:'s', q:'Pets', l:'Not for me', r:'A house full of animals',
+   talk:'Name your hypothetical pet together.'},
+  {id:'z6', cat:'future', d:2, type:'o', q:'What is a skill you want to learn this year?',
+   talk:'How could the other one cheer you on?'},
+
+  // Flirty
+  {id:'k1', cat:'flirty', d:2, type:'o', q:'What is something your partner does that you find really attractive?',
+   talk:'Did they know?'},
+  {id:'k2', cat:'flirty', d:2, type:'c', q:'Most romantic gesture', o:['A handwritten note','A slow dance in the kitchen','A surprise visit','Cooking my favourite meal'],
+   talk:'Expect one of these soon.'},
+  {id:'k3', cat:'flirty', d:1, type:'s', q:'Your flirting style', l:'Subtle looks', r:'Obvious and proud',
+   talk:'Show your style. Right now.'},
+  {id:'k4', cat:'flirty', d:2, type:'o', q:'When did you first want to kiss your partner?',
+   talk:'Tell it in detail.'},
+  {id:'k5', cat:'flirty', d:1, type:'c', q:'Best time for a kiss', o:['Good morning','Hello at the door','In the middle of something','Goodnight'],
+   talk:'Go on then.'},
+  {id:'k6', cat:'flirty', d:1, type:'o', q:'Which outfit of your partner\'s do you like most?',
+   talk:'Noted.'},
 ];
 const BYID = Object.fromEntries(CARDS.map(c => [c.id, c]));
-const LENGTHS = [[8,'Short','~15 min'],[12,'An evening','~30 min'],[16,'Long night','~45 min']];
+const LENGTHS = [[8,'Short','~15 min'],[12,'An evening','~30 min'],[16,'Long night','~45 min'],[24,'All night','~1 hr']];
+const MODES = {
+  cards: ['Question cards', 'Answer, guess each other, talk'],
+  ttt:   ['Tic-tac-talk', 'Claim a square, answer its question'],
+  rps:   ['Rock, paper, truth', 'Loser answers a question'],
+  blank: ['Fill the blank', 'Play a card into the gap, vote for the best'],
+};
+// Fill the blank: two decks of original prompts and answer cards.
+const BLANK = {
+  light: {
+    prompts: [
+      'Our first holiday together will mostly be ___.', 'The secret to a perfect Sunday is ___.', 'If we had a reality show, it would be called "___".',
+      'My hidden talent is ___.', 'Nothing says romance like ___.', 'Our couple superpower: ___.', 'The worst possible first-date activity: ___.',
+      'I would trade my phone for a week of ___.', 'My autobiography: "Life, Love and ___".', 'The real reason I am late again: ___.',
+      'Our future pet will be named after ___.', 'Tonight\'s dinner plan: ___.', 'The strangest thing in my fridge right now: ___.',
+      'My love language is secretly ___.', 'Guaranteed to cheer me up: ___.', 'On our 50th anniversary we will celebrate with ___.',
+      'Our first argument will definitely be about ___.', 'The next big couples trend: ___.', 'Rainy day plan: ___.',
+      'What I am actually doing when I say "five more minutes": ___.', 'The best wedding guest gift ever: ___.', 'My villain origin story began with ___.',
+    ],
+    answers: [
+      'A suspiciously large cheese board', 'Napping competitively', 'Karaoke at 2am', 'A spreadsheet of snacks', 'Getting lost on purpose',
+      'A blanket fort with a dress code', 'Interpretive dance', 'Arguing about the thermostat', 'One more episode', 'Being tourists in our own town',
+      'A duck that follows us around', 'Breakfast for dinner', 'A strongly worded review', 'Fifteen tabs of holiday rentals', 'Talking in accents all day',
+      'A very small hat', 'The good biscuits', 'Accidentally adopting a plant', 'A playlist for every mood', 'Running late, stylishly',
+      'A 47-step skincare routine', 'Swearing at flat-pack furniture', 'Far too many pillows', 'Midnight pancakes', 'A dramatic sigh',
+      'Stealing the duvet', 'Sending memes from the next room', 'A walk that turns into a pub', 'Planning the next holiday on this holiday', 'Crying at adverts',
+      'A pigeon named Gerald', 'The world\'s slowest board game', 'An emergency chocolate stash', 'Dancing in the kitchen', 'A road trip with no snacks',
+      'Pretending to have read the book', 'Overthinking a text for an hour', 'The loudest laugh in the cinema', 'Socks with sandals', 'A worrying number of candles',
+      'Cancelling plans and feeling great', 'Saying yes before hearing the question', 'A cat with opinions', 'Unrequested facts about octopuses', 'Matching pyjamas',
+      'A pizza with everything on it', 'Sleeping through three alarms', '200 photos of one sunset', 'Rearranging furniture at midnight', 'A very serious nap',
+    ],
+  },
+  deep: {
+    prompts: [
+      'The thing that makes me feel most at home is ___.', 'I feel most loved when there is ___.', 'A lesson I learned the hard way: ___.',
+      'If I go quiet, it usually means I need ___.', 'Something I am still learning: ___.', 'I would like more ___ in my life.',
+      'The bravest thing I can do is ___.', 'My younger self would be surprised by ___.', 'I recharge best with ___.',
+      'Something I hope we always keep: ___.', 'The scary part of getting close to someone: ___.', 'A perfect ordinary day includes ___.',
+      'I am more grateful for ___ than I say.', 'When I am overwhelmed, what helps is ___.', 'A small thing that means a lot to me: ___.',
+      'Home is ___.', 'I hope we grow into ___.', 'I feel most like myself with ___.', 'What I want people to feel around me: ___.',
+      'The best thing a partner can offer is ___.',
+    ],
+    answers: [
+      'Slow mornings', 'Being really listened to', 'Honest conversations', 'Time alone without guilt', 'A hand on my back',
+      'Someone noticing the small things', 'Plans that actually happen', 'Saying yes to something new', 'Laughing until it hurts', 'Feeling safe to be messy',
+      'Knowing I am not too much', 'Quiet company', 'Being chosen, again and again', 'Old friends', 'A long walk with no destination',
+      'Learning something new', 'Forgiving myself', 'Asking for help', 'Room to change my mind', 'Cooking for people I love',
+      'Feeling useful', 'Being surprised', 'Patience', 'Saying sorry first', 'Music that hits just right',
+      'Rest I do not have to earn', 'Adventures that start by accident', 'Knowing where I belong', 'Being brave in small ways', 'A text that says "thinking of you"',
+      'Letting someone in', 'Staying curious', 'Silence that does not need filling', 'Saying what I need out loud', 'Family, however it looks',
+      'Being understood without explaining', 'A joke nobody else gets', 'Growing at different speeds', 'Feeling free', 'A plan B, and a plan C',
+      'Holding on less tightly', 'Celebrating tiny wins', 'Being seen at my worst, and staying', 'Kindness when it is hard', 'A calm place to land',
+    ],
+  },
+};
+const HAND = 6;
+// Quick questions for Tic-tac-talk squares: answer out loud when you claim one.
+const QUICK = [
+  'Best snack ever?','Worst date you have been on?','Dream holiday?','Last thing that made you laugh?','Favourite smell?',
+  'Guilty-pleasure song?','Hidden talent?','Best gift you ever got?','Comfort film?','First concert?',
+  'Perfect pizza order?','Weird food you love?','Childhood nickname?','Most-used emoji?','Favourite season, and why?',
+  'What would you cook me?','One word for us?','Best compliment you ever got?','Proudest moment this year?','Best bit of today?',
+  'Biggest pet peeve?','Tea or coffee, and how?','Best advice you ever got?','Celebrity crush?','Ideal lazy Sunday?',
+  'Song stuck in your head?','Most spontaneous thing this year?','Favourite place in town?','One bucket-list item?','What makes you feel calm?',
+  'Last dream you remember?','Favourite word?','A silly fear?','A trait you like in me?','Best meal of your life?',
+  'Hill you will die on?','Most rewatched show?','Morning ritual?','Something you collect?','Last thing you Googled?',
+  'Favourite thing about your job?','A small win this week?','Best road trip snack?','Sunrise or sunset?','A book that stuck with you?',
+];
+const RPS = [['✊','Rock'],['✋','Paper'],['✌️','Scissors']];
+const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 const REACTS = ['❤️','😂','😮','🥹','🙌'];
 
 /* ---------------------------------------------------------------------------
@@ -295,11 +541,14 @@ let draft = {key: null};
 let ui = {};
 
 function initState(room, name) {
-  return {room, phase:'lobby', names:{A:name, B:null}, settings:{len:12, cats:Object.keys(CATS)},
-          deck:[], idx:0, ans:{}, ready:{}, history:[], notes:[]};
+  return {room, phase:'lobby', mode:'cards', names:{A:name, B:null}, settings:{len:12, cats:Object.keys(CATS)},
+          deck:[], idx:0, ans:{}, ready:{}, history:[], notes:[], seen:[], game:null};
 }
-function buildDeck(st) {
-  const pool = shuffle(CARDS.filter(c => c.id !== 'bat' && st.cats.includes(c.cat)));
+function buildDeck(st, seen) {
+  // Random from the whole pool for the chosen topics, cards you have not played yet first.
+  const fresh = c => !seen.includes(c.id);
+  const all = CARDS.filter(c => c.id !== 'bat' && st.cats.includes(c.cat));
+  const pool = [...shuffle(all.filter(fresh)), ...shuffle(all.filter(c => !fresh(c)))];
   // Keep a mix of card types, then order light -> deep with a little randomness.
   const pick = pool.slice(0, Math.max(0, st.len - 1));
   pick.sort((a, b) => (a.d + Math.random() * 1.3) - (b.d + Math.random() * 1.3));
@@ -322,9 +571,70 @@ function reduce(role, a) {
       if (LENGTHS.some(l => l[0] === a.len)) S.settings.len = a.len;
       if (Array.isArray(a.cats)) S.settings.cats = a.cats.filter(c => CATS[c]);
       break;
+    case 'mode':
+      if (role === 'A' && S.phase === 'lobby' && MODES[a.mode]) S.mode = a.mode;
+      break;
     case 'start':
-      if (role !== 'A' || S.phase !== 'lobby' || !S.names.B || !S.settings.cats.length) break;
-      Object.assign(S, {deck: buildDeck(S.settings), idx: 0, phase: 'card', ans: {}, ready: {}, history: []});
+      if (role !== 'A' || S.phase !== 'lobby' || !S.names.B) break;
+      if (S.mode !== 'cards') { S.game = newGame(S.mode, null); S.phase = 'game'; break; }
+      if (!S.settings.cats.length) break;
+      Object.assign(S, {deck: buildDeck(S.settings, S.seen), idx: 0, phase: 'card', ans: {}, ready: {}, history: []});
+      S.seen = [...new Set([...S.seen, ...S.deck])];
+      if (S.seen.length >= CARDS.length - 1) S.seen = S.deck.slice();   // played them all: start the cycle again
+      break;
+    case 'lobby':
+      if (S.phase === 'game' || S.phase === 'end') { S.phase = 'lobby'; S.game = null; }
+      break;
+    case 'ttt_move': {
+      const g = S.game, i = a.i;
+      if (S.phase !== 'game' || !g || g.kind !== 'ttt' || g.result || g.turn !== role) break;
+      if (!Number.isInteger(i) || i < 0 || i > 8 || g.board[i]) break;
+      g.board[i] = role; g.last = i;
+      const line = WIN_LINES.find(l => l.every(j => g.board[j] === role));
+      if (line) { g.result = {winner: role, line}; g.score[role]++; }
+      else if (g.board.every(Boolean)) g.result = {winner: null, line: null};
+      else g.turn = other(role);
+      break;
+    }
+    case 'rps_pick': {
+      const g = S.game;
+      if (S.phase !== 'game' || !g || g.kind !== 'rps' || g.result || ![0, 1, 2].includes(a.p)) break;
+      g.picks[role] = a.p;
+      if (g.picks.A != null && g.picks.B != null) {
+        const d = (g.picks.A - g.picks.B + 3) % 3;   // 1: A wins, 2: B wins
+        const winner = d === 0 ? null : d === 1 ? 'A' : 'B';
+        if (winner) g.score[winner]++;
+        const open = CARDS.filter(c => c.type === 'o');
+        g.result = {winner, q: open[Math.floor(Math.random() * open.length)].q};
+      }
+      break;
+    }
+    case 'blank_play': {
+      const g = S.game;
+      if (S.phase !== 'game' || !g || g.kind !== 'blank' || g.played[role]) break;
+      const hand = g.hands[role];
+      if (!Number.isInteger(a.i) || a.i < 0 || a.i >= hand.length) break;
+      g.played[role] = hand.splice(a.i, 1)[0];
+      hand.push(blankDraw(g));
+      break;
+    }
+    case 'blank_vote': {
+      const g = S.game;
+      if (S.phase !== 'game' || !g || g.kind !== 'blank' || g.result || !(g.played.A && g.played.B) || !['A', 'B'].includes(a.r)) break;
+      g.votes[role] = a.r;
+      if (g.votes.A && g.votes.B) {
+        const agreed = g.votes.A === g.votes.B;
+        if (agreed) g.score[g.votes.A]++; else { g.score.A++; g.score.B++; }
+        if (agreed) g.sync++;
+        g.result = {agreed};
+      }
+      break;
+    }
+    case 'blank_deck':
+      if (role === 'A' && S.phase === 'lobby' && BLANK[a.deck]) S.settings.blank = a.deck;
+      break;
+    case 'game_next':
+      if (S.phase === 'game' && S.game && S.game.result) S.game = newGame(S.game.kind, S.game);
       break;
     case 'answer':
       if (S.phase !== 'card' || !card) break;
@@ -357,6 +667,31 @@ function reduce(role, a) {
       break;
   }
 }
+function newGame(kind, prev) {
+  const score = prev ? prev.score : {A: 0, B: 0};
+  const round = prev ? prev.round + 1 : 1;
+  if (kind === 'ttt') {
+    // Starting player alternates; first game a coin flip.
+    const first = prev ? other(prev.first) : (Math.random() < .5 ? 'A' : 'B');
+    return {kind, round, score, first, turn: first, board: Array(9).fill(null), prompts: shuffle(QUICK.slice()).slice(0, 9), last: null, result: null};
+  }
+  if (kind === 'blank') {
+    const deck = prev ? prev.deck : (S.settings.blank || 'light');
+    const g = prev
+      ? {kind, deck, round, score, sync: prev.sync, hands: prev.hands, pile: prev.pile, prompts: prev.prompts}
+      : {kind, deck, round, score, sync: 0, hands: {A: [], B: []}, pile: [], prompts: []};
+    for (const r of ['A', 'B']) while (g.hands[r].length < HAND) g.hands[r].push(blankDraw(g));
+    if (!g.prompts.length) g.prompts = shuffle(BLANK[deck].prompts.slice());
+    Object.assign(g, {prompt: g.prompts.pop(), played: {}, votes: {}, result: null});
+    return g;
+  }
+  return {kind, round, score, picks: {}, result: null};
+}
+function blankDraw(g) {
+  const src = BLANK[g.deck];
+  if (!g.pile.length) g.pile = shuffle(src.answers.filter(t => !g.hands.A.includes(t) && !g.hands.B.includes(t)));
+  return g.pile.pop();
+}
 function advance() {
   S.idx++; S.ans = {}; S.ready = {};
   S.phase = S.idx >= S.deck.length ? 'end' : 'card';
@@ -365,6 +700,13 @@ function advance() {
 function viewForGuest() {
   const v = JSON.parse(JSON.stringify(S));
   if (v.phase === 'card' && v.ans.A) v.ans.A = {hidden: true};
+  if (v.game && v.game.kind === 'rps' && !v.game.result && v.game.picks.A != null) v.game.picks.A = -1;   // picked, but secret
+  if (v.game && v.game.kind === 'blank') {
+    v.game.hands = {B: v.game.hands.B}; delete v.game.pile; delete v.game.prompts;
+    if (v.game.played.A && !v.game.played.B) v.game.played.A = '?';          // played, but face down
+    if (v.game.votes.A && !v.game.result) v.game.votes.A = '?';
+  }
+  delete v.seen;
   return v;
 }
 function act(a) {
@@ -594,7 +936,10 @@ function joinRoom() {
 function enterRoom() {
   history.replaceState(null, '', location.pathname + '?room=' + session.room + (new URLSearchParams(location.search).get('transport') ? '&transport=' + new URLSearchParams(location.search).get('transport') : ''));
   document.body.className = 'role-' + session.role;
-  if (session.role === 'A') S = store.get('tt-state-' + session.room) || initState(session.room, session.name);
+  if (session.role === 'A') {
+    S = store.get('tt-state-' + session.room) || initState(session.room, session.name);
+    S.mode = S.mode || 'cards'; S.seen = S.seen || []; S.game = S.game || null;   // rooms saved by older versions
+  }
   render(); connect();
 }
 function leaveRoom() {
@@ -654,6 +999,7 @@ function view() {
     case 'card': return viewCard();
     case 'reveal': return viewReveal();
     case 'end': return viewEnd();
+    case 'game': return !S.game ? '' : S.game.kind === 'ttt' ? viewTTT() : S.game.kind === 'blank' ? viewBlank() : viewRPS();
   }
   return '';
 }
@@ -709,8 +1055,13 @@ function viewLobby() {
       <button class="btn me" data-do="share">Send the link to your partner</button>
       ${status}
     </div>` : `<div class="panel center"><div class="kicker">Room ${esc(S.room)}</div>${status}
-      <p style="margin:6px 0 0;color:var(--muted)">${nm('A')} is choosing the deck. It starts on both phones at the same time.</p></div>`}
+      <p style="margin:6px 0 0;color:var(--muted)">${nm('A')} is choosing what to play. It starts on both phones at the same time.</p></div>`}
     <div class="panel">
+      <div class="kicker">What to play</div>
+      <div class="modes">${Object.entries(MODES).map(([k, [t, s]]) =>
+        `<button class="mode ${S.mode === k ? 'on' : ''} ${host ? '' : 'ro'}" ${host ? `data-do="mode" data-m="${k}"` : ''}><b>${t}</b><span>${s}</span></button>`).join('')}</div>
+    </div>
+    ${S.mode === 'cards' ? `<div class="panel">
       <div class="kicker">How long</div>
       <div class="seg">${lens}</div>
       <div class="kicker" style="margin-top:18px">What to talk about</div>
@@ -719,11 +1070,104 @@ function viewLobby() {
         const avail = 1 + CARDS.filter(c => c.id !== 'bat' && st.cats.includes(c.cat)).length;
         return avail < st.len ? `<p class="hint" style="margin:14px 0 0;text-align:left">These topics have ${avail} cards, so this game will be ${avail} long. Add a topic for more.</p>` : '';
       })()}
-    </div>
-    ${host ? `<button class="btn primary" data-do="start" ${partnerHere && st.cats.length ? '' : 'disabled'}>${partnerHere ? 'Deal the first card' : 'Waiting for your partner…'}</button>` : ''}
+    </div>` : ''}
+    ${S.mode === 'blank' ? `<div class="panel"><div class="kicker">Which deck</div><div class="seg">${
+      [['light', 'Silly', 'Daft and fun'], ['deep', 'Deeper', 'Honest, still playful']].map(([k, t, s]) =>
+        `<button class="chip ${(st.blank || 'light') === k ? 'on' : ''} ${host ? '' : 'ro'}" ${host ? `data-do="bdeck" data-k="${k}"` : ''}>${t}<small>${s}</small></button>`).join('')}</div></div>` : ''}
+    ${host ? `<button class="btn primary" data-do="start" ${partnerHere && (S.mode !== 'cards' || st.cats.length) ? '' : 'disabled'}>${partnerHere ? (S.mode === 'cards' ? 'Deal the first card' : 'Start ' + MODES[S.mode][0]) : 'Waiting for your partner…'}</button>` : ''}
     <p class="fine">Tip: either of you can skip a card that does not feel right. No reason needed.</p>
     <div class="center"><button class="linkish" data-do="leave">Leave room</button></div>
   </div>`;
+}
+
+/* ---- Mini-games ---- */
+function gameTop(title) {
+  const g = S.game;
+  return `<div class="progress"><span>${title}</span><span>Round ${g.round}</span></div>
+    <div class="scoreline"><span class="A">${nm('A')} · ${g.score.A}</span><span class="B">${g.score.B} · ${nm('B')}</span></div>`;
+}
+function gameFoot(nextLabel) {
+  const g = S.game;
+  return `${g.result ? `<button class="btn me" data-do="game_next">${nextLabel}</button>` : ''}
+    <div class="center" style="margin-top:6px"><button class="linkish" data-do="to_lobby">Back to the lobby</button></div>`;
+}
+
+function viewTTT() {
+  const g = S.game, mine = g.turn === me() && !g.result;
+  const lastBy = g.last != null ? g.board[g.last] : null;
+  const sqs = g.board.map((v, i) => {
+    const win = g.result && g.result.line && g.result.line.includes(i);
+    if (v) return `<button class="sq ${v} ${win ? 'win' : ''} ${g.last === i ? 'last' : ''}" disabled>${esc(((S.names[v] || '?')[0] || '?').toUpperCase())}</button>`;
+    return `<button class="sq" ${mine ? `data-do="ttt" data-i="${i}"` : 'disabled'}>${esc(g.prompts[i])}</button>`;
+  }).join('');
+  let line, prize = '';
+  if (g.result && g.result.winner) {
+    const w = g.result.winner;
+    line = `${nm(w)} wins!`;
+    prize = `<div class="talk"><div class="kicker">The prize</div><p>${nm(other(w))} owes ${nm(w)} one honest compliment. Out loud, now.</p></div>`;
+  } else if (g.result) {
+    line = 'A draw. Very diplomatic.';
+    prize = `<div class="talk"><div class="kicker">A draw</div><p>Each of you picks a square the other claimed and answers it too.</p></div>`;
+  } else line = mine ? 'Your turn: pick a square' : `${partner()}'s turn…`;
+  const claim = g.last != null ? `<div class="claim"><span class="n" style="color:var(--${lastBy})">${nm(lastBy)}</span> claimed a square. Answer out loud:<p>${esc(g.prompts[g.last])}</p></div>` : '';
+  return `<div>${gameTop('Tic-tac-talk')}
+    <p class="turn">${line}</p>
+    <div class="board">${sqs}</div>
+    ${claim}${prize}
+    ${!g.result ? '<p class="fine">Claiming a square means answering its question out loud. Three in a row wins.</p>' : ''}
+    ${gameFoot('Play again')}
+  </div>`;
+}
+
+function viewRPS() {
+  const g = S.game, mine = g.picks[me()], theirs = g.picks[other(me())];
+  let body;
+  if (!g.result) {
+    body = mine != null
+      ? `<div class="locked"><div class="kicker">You picked</div><div class="big">${RPS[mine][0]} ${RPS[mine][1]}</div></div>
+         ${theirs != null ? '' : `<div class="status"><span class="breathe"></span>${partner()} is choosing…</div>`}`
+      : `<p class="turn">Pick in secret</p>
+         <div class="rps">${RPS.map(([e, n], i) => `<button data-do="rps" data-p="${i}"><span>${e}</span>${n}</button>`).join('')}</div>
+         ${theirs != null ? `<div class="status done">● ${partner()} has picked</div>` : `<div class="status"><span class="breathe"></span>${partner()} is choosing…</div>`}`;
+  } else {
+    const r = g.result, w = r.winner;
+    body = `<div class="face">
+        <div><div class="big">${RPS[g.picks.A][0]}</div><small style="color:var(--A)">${nm('A')}</small></div>
+        <div class="vs">vs</div>
+        <div><div class="big">${RPS[g.picks.B][0]}</div><small style="color:var(--B)">${nm('B')}</small></div>
+      </div>
+      <p class="turn">${w ? `${nm(w)} wins` : 'Same pick! You both answer.'}</p>
+      <div class="talk"><div class="kicker">${w ? `${nm(other(w))} answers` : 'You both answer'}</div><p>${esc(r.q)}</p></div>`;
+  }
+  return `<div>${gameTop('Rock, paper, truth')}${body}${gameFoot('Next round')}</div>`;
+}
+
+function viewBlank() {
+  const g = S.game, m = me(), o = other(m);
+  const prompt = esc(g.prompt).replace('___', '<u>&emsp;&emsp;&emsp;</u>');
+  let body;
+  if (!(g.played.A && g.played.B)) {
+    body = g.played[m] && g.played[m] !== '?'
+      ? `<div class="claim"><span class="n">You played</span><p>${esc(g.played[m])}</p></div>
+         ${g.played[o] ? '' : `<div class="status"><span class="breathe"></span>${partner()} is choosing a card…</div>`}`
+      : `<div class="sub"><span class="sw"></span>Play the card that fits best (or worst)</div>
+         <div class="opts">${(g.hands[m] || []).map((t, i) => `<button class="opt" data-do="bplay" data-i="${i}">${esc(t)}</button>`).join('')}</div>
+         <div class="spacer"></div>
+         ${g.played[o] ? `<div class="status done">● ${partner()} has played</div>` : `<div class="status"><span class="breathe"></span>${partner()} is choosing…</div>`}`;
+  } else {
+    const card = r => `<button class="opt ${g.votes[m] === r ? 'on' : ''}" ${g.result ? 'disabled' : `data-do="bvote" data-r="${r}"`} style="border-left:5px solid var(--${r})">
+      ${esc(g.played[r])}${g.result ? `<div class="g" style="font-size:13px;color:var(--muted);margin-top:4px">${nm(r)} · ${['A', 'B'].filter(x => g.votes[x] === r).map(x => '♥ ' + nm(x)).join(' ') || 'no votes'}</div>` : ''}</button>`;
+    body = `<div class="sub">${g.result ? 'The votes' : 'Which one wins? Vote for your favourite, even if it is yours'}</div>
+      <div class="opts">${card(m)}${card(o)}</div><div class="spacer"></div>
+      ${g.result ? `<p class="turn">${g.result.agreed ? 'You agreed! In sync ♥' : 'Different tastes. A point each.'}</p>`
+        : g.votes[m] ? `<div class="status"><span class="breathe"></span>Waiting for ${partner()}'s vote…</div>`
+        : g.votes[o] ? `<div class="status done">● ${partner()} has voted</div>` : ''}`;
+  }
+  return `<div>${gameTop('Fill the blank · ' + (g.deck === 'deep' ? 'Deeper' : 'Silly'))}
+    <div class="card"><p class="q">${prompt}</p></div>
+    ${body}
+    ${g.result ? `<p class="fine">Agreed ${g.sync} of ${g.round} so far.</p>` : ''}
+    ${gameFoot('Next prompt')}</div>`;
 }
 
 function cardHeader(card) {
@@ -908,6 +1352,14 @@ document.addEventListener('click', e => {
       return act({k: 'settings', cats});
     }
     case 'start': return act({k: 'start'});
+    case 'mode': return act({k: 'mode', mode: b.dataset.m});
+    case 'bdeck': return act({k: 'blank_deck', deck: b.dataset.k});
+    case 'ttt': return act({k: 'ttt_move', i: Number(b.dataset.i)});
+    case 'rps': return act({k: 'rps_pick', p: Number(b.dataset.p)});
+    case 'bplay': return act({k: 'blank_play', i: Number(b.dataset.i)});
+    case 'bvote': return act({k: 'blank_vote', r: b.dataset.r});
+    case 'game_next': return act({k: 'game_next'});
+    case 'to_lobby': return act({k: 'lobby'});
     case 'pick': draft[b.dataset.f] = Number(b.dataset.i); return render();
     case 'lock': {
       const card = BYID[S.deck[S.idx]];

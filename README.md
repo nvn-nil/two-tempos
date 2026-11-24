@@ -7,7 +7,14 @@ Built around one calm, plan-ahead person and one spontaneous, social person: soc
 last-minute plans, how to invite each other to things, how to handle disagreements.
 
 - **Card types:** sliders (place yourself, guess them), this-or-that (pick, guess), open answers.
-- **Decks:** 8 / 12 / 16 cards, from light to deeper. Pick from Warm-up, Energy & recharge, Plans vs. spontaneity, Love & care, Playful, Deeper.
+- **Decks:** 8 / 12 / 16 / 24 cards, from light to deeper, drawn at random from 109 cards across 13 topics:
+  Warm-up, Energy & recharge, Plans vs. spontaneity, Love & care, Playful, Dates & adventures, Home & habits,
+  Our story, Growing up, Dreams & someday, Flirty, Deeper. Cards you have already played come last, so new rounds stay fresh.
+- **Mini-games**, from the same lobby:
+  - *Tic-tac-talk*: every square holds a quick question; claim it by answering out loud. Loser owes a compliment.
+  - *Rock, paper, truth*: secret picks; the loser answers a question from the card pool.
+  - *Fill the blank*: a fill-in-the-blank card game with original Silly and Deeper decks. You each play an answer
+    card from your hand into the prompt, then both vote. Agree and that card scores; disagree and you both do.
 - **Synced:** both phones move together. The next card comes only when you are *both* ready, so nobody gets rushed.
 - **Skip** any card, no reason needed. Send **emoji reactions** that float up on the other phone.
 - **Notes:** save "things to remember about each other". You get them all at the end, with a copy button.
