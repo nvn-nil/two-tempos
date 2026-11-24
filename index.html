@@ -64,7 +64,24 @@ textarea{resize:vertical;min-height:110px;line-height:1.45}
 .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .chip.ro{cursor:default}
 .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
-.modes{display:grid;gap:8px}
+.modes{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.tempo{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:#fff;border:1px solid var(--line);color:var(--muted);margin-right:6px}
+.tempo.calm{color:var(--A);border-color:var(--A-soft);background:var(--A-soft)} .tempo.spont{color:var(--B);border-color:var(--B-soft);background:var(--B-soft)}
+.card.swipe{min-height:220px;display:flex;flex-direction:column;justify-content:space-between;touch-action:pan-y;cursor:grab;user-select:none;transition:transform .15s}
+.card.swipe .q{font-size:30px;margin-top:24px}
+.big2{font-family:"Fraunces",Georgia,serif;font-size:clamp(24px,8vw,36px);line-height:1.1;word-break:break-word}
+.opt.lie{border-color:var(--B);background:var(--B-soft)}
+.timer{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin-bottom:16px}
+.timer div{height:100%;background:var(--me);transform-origin:left;animation:drain linear forwards}
+@keyframes drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.speed{display:grid;gap:10px;margin-bottom:8px} .speed .vs{text-align:center;color:var(--muted);font-size:14px}
+.opt.big3{font-family:"Fraunces",Georgia,serif;font-size:26px;text-align:center;padding:26px 14px}
+.card.story .starter{font-family:"Fraunces",Georgia,serif;font-style:italic;font-size:19px;margin:0 0 12px}
+.line{margin:0 0 10px;padding-left:10px;border-left:3px solid var(--line);font-size:16px}
+.line.A{border-color:var(--A)} .line.B{border-color:var(--B)}
+.q.hint{letter-spacing:.15em;font-size:24px;margin-bottom:10px}
+#ink{display:block;width:100%;aspect-ratio:1;background:#fff;border:1px solid var(--line);border-radius:20px;margin:6px 0 12px;touch-action:none}
+#ink.can{cursor:crosshair;border-color:var(--me)}
 .mode{text-align:left;padding:13px 14px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer}
 .mode b{display:block;font-size:16px} .mode span{font-size:13px;color:var(--muted)}
 .mode.on{background:var(--ink);color:#fff;border-color:var(--ink)} .mode.on span{color:#cfc6cd}
@@ -168,6 +185,7 @@ input[type=range].untouched{opacity:.45;filter:grayscale(.6)}
 <div id="toast"></div>
 <div id="sheet"></div>
 
+<script src="content.js"></script>
 <script>
 /* ---------------------------------------------------------------------------
    Content
@@ -499,6 +517,13 @@ const BLANK = {
   },
 };
 const HAND = 6;
+// Bigger pools from content.js, when it loaded.
+const C = window.TT_CONTENT || {};
+const uniq = a => [...new Set(a)];
+if (C.blank) for (const d of ['light', 'deep']) if (C.blank[d]) {
+  BLANK[d].prompts = uniq(BLANK[d].prompts.concat((C.blank[d].prompts || []).filter(p => p.split('___').length === 2)));
+  BLANK[d].answers = uniq(BLANK[d].answers.concat(C.blank[d].answers || []));
+}
 // Quick questions for Tic-tac-talk squares: answer out loud when you claim one.
 const QUICK = [
   'Best snack ever?','Worst date you have been on?','Dream holiday?','Last thing that made you laugh?','Favourite smell?',
@@ -513,6 +538,7 @@ const QUICK = [
 ];
 const RPS = [['✊','Rock'],['✋','Paper'],['✌️','Scissors']];
 const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+if (Array.isArray(C.quick)) QUICK.splice(0, QUICK.length, ...uniq(QUICK.concat(C.quick)));
 const REACTS = ['❤️','😂','😮','🥹','🙌'];
 
 /* ---------------------------------------------------------------------------
@@ -641,6 +667,16 @@ function reduce(role, a) {
       }
       break;
     }
+    case 'g': {   // a move in one of the plug-in games
+      const g = S.game;
+      if (S.phase === 'game' && g && GAMES[g.kind] && a.a && typeof a.a === 'object') GAMES[g.kind].act(g, role, a.a);
+      break;
+    }
+    case 'gopt': {
+      const def = GAMES[S.mode];
+      if (role === 'A' && S.phase === 'lobby' && def && def.options && def.options.some(o => o[0] === a.v)) S.settings['opt_' + S.mode] = a.v;
+      break;
+    }
     case 'blank_deck':
       if (role === 'A' && S.phase === 'lobby' && BLANK[a.deck]) S.settings.blank = a.deck;
       break;
@@ -679,6 +715,7 @@ function reduce(role, a) {
   }
 }
 function newGame(kind, prev) {
+  if (GAMES[kind]) return GAMES[kind].init(prev);
   const score = prev ? prev.score : {A: 0, B: 0};
   const round = prev ? prev.round + 1 : 1;
   if (kind === 'ttt') {
@@ -698,6 +735,458 @@ function newGame(kind, prev) {
   }
   return {kind, round, score, picks: {}, result: null};
 }
+/* ---------------------------------------------------------------------------
+   More games, as plug-ins. Each one: title, sub, coop (scored together), options
+   (a lobby choice), init(prev) for a round, act(g, role, a) for a move, redact(g)
+   for what the guest's phone may see, summary(g) and lines for the results file,
+   view(g) for the screen, after(g) once it is on screen.
+--------------------------------------------------------------------------- */
+const pool = (list, fallback) => (Array.isArray(list) && list.length ? list : fallback);
+const DATES = () => pool(C.dates, [
+  {t: 'Blanket, takeaway and a film', tempo: 'calm', tag: 'home'}, {t: 'Say yes to the first event we find tonight', tempo: 'spont', tag: 'adventure'},
+  {t: 'Try a restaurant neither of us knows', tempo: 'mixed', tag: 'food'}, {t: 'Picnic in the park', tempo: 'calm', tag: 'outdoors'},
+  {t: 'Karaoke', tempo: 'spont', tag: 'silly'}, {t: 'Day trip by train', tempo: 'mixed', tag: 'adventure'}]);
+const MELD = () => pool(C.meld, ['Sunday', 'Holiday', 'Comfort', 'Adventure', 'Home', 'Summer', 'Breakfast', 'Rain', 'Music', 'Us']);
+const WYR = () => pool(C.wyr, [['Cosy night in every Friday', 'A surprise plan every Friday'], ['Always know the plan', 'Never know the plan'],
+  ['Weekend in a cabin with no wifi', 'Weekend in a city that never sleeps'], ['Breakfast in bed', 'Dinner under the stars']]);
+const NHIE = d => pool(C.nhie && C.nhie[d], {
+  light: ['cried at a film', 'pretended to be on the phone to avoid someone', 'booked a trip on impulse'],
+  flirty: ['reread our old messages', 'picked an outfit to impress you', 'smiled at my phone because of you'],
+  deeper: ['changed my mind about something big', 'moved somewhere I knew nobody', 'asked for help when it was hard']}[d] || []);
+const SPEED = () => pool(C.speed, [['Tea', 'Coffee'], ['Beach', 'Mountains'], ['Cats', 'Dogs'], ['Sunrise', 'Sunset'], ['Sweet', 'Savoury'], ['Text', 'Call'],
+  ['Books', 'Films'], ['City', 'Countryside'], ['Summer', 'Winter'], ['Plan', 'Wing it'], ['Night in', 'Night out'], ['Pizza', 'Pasta']]);
+const STARTERS = () => pool(C.story && C.story.starters, ['Our first holiday together began when the taxi driver turned round and said...']);
+const TWISTS = () => pool(C.story && C.story.twists, ['Suddenly, it starts snowing indoors.', 'A goat walks in wearing a tiny hat.']);
+const WORDS = d => pool(C.draw && C.draw[d], d === 'medium' ? ['picnic in the rain', 'slow dance', 'road trip'] : ['umbrella', 'cat', 'pizza', 'sunset', 'tent']);
+const THEMES = () => pool(C.ttl, ['Childhood', 'Food', 'Travel', 'Something I am secretly good at']);
+const TEMPO = {calm: 'Calm', mixed: 'In between', spont: 'Spontaneous'};
+const SPEED_SECS = 5;
+
+const nmT = r => (S.names[r] || (r === 'A' ? 'Player 1' : 'Player 2'));
+const norm = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ')
+  .replace(/\s+/g, ' ').trim().replace(/^(a|an|the) /, '').replace(/(\w{3,})s\b/g, '$1');
+// Deal without repeats until a pool runs out (remembered per room, host side).
+function drawFrom(key, list, n) {
+  S.used = S.used || {};
+  let used = S.used[key] || [];
+  let fresh = list.map((_, i) => i).filter(i => !used.includes(i));
+  if (fresh.length < n) { used = []; fresh = list.map((_, i) => i); }
+  const pick = shuffle(fresh).slice(0, n);
+  S.used[key] = used.concat(pick);
+  return pick;
+}
+function base(kind, prev) {
+  return {kind, round: prev ? prev.round + 1 : 1, score: prev ? prev.score : {A: 0, B: 0}, tally: prev ? prev.tally : 0, result: null};
+}
+function deckOf(kind, prev) {
+  const def = GAMES[kind];
+  return def.options ? (prev ? prev.deck : (S.settings['opt_' + kind] || def.options[0][0])) : undefined;
+}
+function logGame(g, line) {
+  const def = GAMES[g.kind], key = g.kind + (g.deck ? '-' + g.deck : '');
+  const opt = def.options && def.options.find(o => o[0] === g.deck);
+  const m = S.minis[key] = S.minis[key] || {wins: {A: 0, B: 0}, rounds: 0, sync: 0, lines: [], title: def.title + (opt ? ` (${opt[1]})` : '')};
+  m.rounds++; m.summary = def.summary(g);
+  if (line && m.lines.length < 80) m.lines.push(line);
+}
+
+// Pick for yourself, guess for them: used by Would you rather and Never have I ever.
+function pickGuess(kind, cfg) {
+  return Object.assign({
+    init(prev) {
+      const g = base(kind, prev); g.deck = deckOf(kind, prev);
+      g.i = drawFrom(kind + (g.deck || ''), cfg.items(g), 1)[0]; g.ans = {};
+      return g;
+    },
+    act(g, role, a) {
+      if (a.k !== 'pick' || g.result || g.ans[role]) return;
+      const v = a.v || {};
+      if (![0, 1].includes(v.self) || ![0, 1].includes(v.guess)) return;
+      g.ans[role] = {self: v.self, guess: v.guess};
+      if (g.ans.A && g.ans.B) {
+        const hit = {A: g.ans.A.guess === g.ans.B.self, B: g.ans.B.guess === g.ans.A.self};
+        if (hit.A) g.score.A++; if (hit.B) g.score.B++;
+        const same = g.ans.A.self === g.ans.B.self; if (same) g.tally++;
+        g.result = {hit, same};
+        const it = cfg.items(g)[g.i], lab = cfg.labels(it);
+        logGame(g, `${cfg.text(it)}  ${nmT('A')}: ${lab[g.ans.A.self]}, ${nmT('B')}: ${lab[g.ans.B.self]}`);
+      }
+    },
+    redact(g) { if (!g.result && g.ans.A) g.ans.A = {hidden: true}; },
+    summary: g => `${nmT('A')} guessed ${g.score.A} right, ${nmT('B')} ${g.score.B}; same answer ${g.tally} of ${g.round}`,
+    view(g) {
+      const it = cfg.items(g)[g.i], lab = cfg.labels(it), m = me(), o = other(m);
+      const key = kind + ':' + g.round;
+      if (!ui.pg || ui.pg.key !== key) ui.pg = {key, self: null, guess: null};
+      let body;
+      if (!g.result && g.ans[m]) {
+        body = `<div class="locked"><div class="kicker">Locked in</div><div class="big">Waiting for ${partner()}</div></div>`;
+      } else if (!g.result) {
+        const opts = (f, cls) => lab.map((t, i) => `<button class="opt ${cls} ${ui.pg[f] === i ? 'on' : ''}" data-do="pg" data-f="${f}" data-i="${i}">${esc(t)}</button>`).join('');
+        body = `<div class="sub"><span class="sw"></span>${cfg.you}</div><div class="opts">${opts('self', '')}</div>
+          <div class="sub"><span class="sw t"></span>${cfg.them(partner())}</div><div class="opts">${opts('guess', 't')}</div><div class="spacer"></div>
+          ${g.ans[o] ? `<div class="status done">● ${partner()} has locked in</div>` : `<div class="status"><span class="breathe"></span>${partner()} is choosing…</div>`}
+          <button class="btn me" data-do="pg-lock" ${ui.pg.self == null || ui.pg.guess == null ? 'disabled' : ''}>Lock in</button>`;
+      } else {
+        body = `<div class="res">${[m, o].map(r => `<div class="who ${r}"><span class="n">${nm(r)}</span><div class="ans">${esc(lab[g.ans[r].self])}</div>
+          <div class="g">${nm(other(r))} guessed “${esc(lab[g.ans[other(r)].guess])}” <span class="tag ${g.result.hit[other(r)] ? 'y' : 'n'}">${g.result.hit[other(r)] ? 'read you' : 'not quite'}</span></div></div>`).join('')}</div>
+          <div class="talk"><div class="kicker">${g.result.same ? 'Same answer' : 'Different answers'}</div><p>${esc(cfg.talk(g.result.same))}</p></div>`;
+      }
+      return `<div>${gameTop(cfg.title + (cfg.deckName ? ' · ' + cfg.deckName(g) : ''))}
+        <div class="card"><p class="q">${esc(cfg.text(it))}</p></div>${body}${gameFoot('Next one')}</div>`;
+    },
+  }, {title: cfg.title, sub: cfg.sub, options: cfg.options});
+}
+
+const GAMES = {
+  swipe: {
+    title: 'Date swipe', sub: 'Swipe on date ideas, see your matches', coop: true,
+    init(prev) { const g = base('swipe', prev); g.ids = drawFrom('swipe', DATES(), 14); g.pos = {A: 0, B: 0}; g.yes = {A: [], B: []}; return g; },
+    act(g, role, a) {
+      if (a.k !== 'swipe' || g.result || a.i !== g.pos[role] || g.pos[role] >= g.ids.length) return;
+      if (a.v === 1) g.yes[role].push(g.ids[a.i]);
+      g.pos[role]++;
+      if (g.pos.A >= g.ids.length && g.pos.B >= g.ids.length) {
+        const matches = g.yes.A.filter(x => g.yes.B.includes(x));
+        g.tally += matches.length; g.result = {matches};
+        logGame(g, 'Matched: ' + (matches.map(i => DATES()[i].t).join('; ') || 'none this round'));
+      }
+    },
+    redact(g) { if (!g.result) g.yes.A = []; },
+    summary: g => `${g.tally} matched date idea${g.tally === 1 ? '' : 's'} over ${g.round} round${g.round === 1 ? '' : 's'}`,
+    view(g) {
+      const m = me(), o = other(m), n = g.ids.length, D = DATES();
+      const tag = d => `<span class="tempo ${d.tempo}">${TEMPO[d.tempo] || ''}</span>${d.tag ? `<span class="tempo">${esc(d.tag[0].toUpperCase() + d.tag.slice(1))}</span>` : ''}`;
+      let body;
+      if (g.result) {
+        const list = ids => ids.map(i => `<div class="note">${esc(D[i].t)}<small>${tag(D[i])}</small></div>`).join('');
+        const onlyMe = g.yes[m].filter(x => !g.yes[o].includes(x)), onlyThem = g.yes[o].filter(x => !g.yes[m].includes(x));
+        body = `<p class="turn">${g.result.matches.length ? `You matched on ${g.result.matches.length}!` : 'No matches this time.'}</p>
+          ${g.result.matches.length ? `<div class="panel"><div class="kicker">Your matches. Pick one and put a date on it</div><div class="notes">${list(g.result.matches)}</div></div>` : ''}
+          ${onlyThem.length ? `<div class="panel"><div class="kicker">Only ${partner()} said yes</div><div class="notes">${list(onlyThem)}</div></div>` : ''}
+          ${onlyMe.length ? `<div class="panel"><div class="kicker">Only you said yes</div><div class="notes">${list(onlyMe)}</div></div>` : ''}`;
+      } else if (g.pos[m] < n) {
+        const d = D[g.ids[g.pos[m]]];
+        body = `<div class="progress"><span>${g.pos[m] + 1} of ${n}</span><span>${partner()}: ${g.pos[o]} of ${n}</span></div>
+          <div class="card swipe" id="swipe-card"><div>${tag(d)}</div><p class="q">${esc(d.t)}</p></div>
+          <div class="row"><button class="btn" data-do="g" data-k="swipe" data-i="${g.pos[m]}" data-v="0" data-once="sw${g.round}:${g.pos[m]}">Not for us</button>
+          <button class="btn me" data-do="g" data-k="swipe" data-i="${g.pos[m]}" data-v="1" data-once="sw${g.round}:${g.pos[m]}">Yes please</button></div>
+          <p class="fine">Swipe the card or tap. Your partner sees only the ideas you both said yes to, at the end.</p>`;
+      } else body = `<div class="locked"><div class="kicker">All swiped</div><div class="big">Waiting for ${partner()}</div></div>
+          <div class="status"><span class="breathe"></span>${partner()} is on ${g.pos[o]} of ${n}</div>`;
+      return `<div>${gameTop('Date swipe', `${g.tally} matched so far`)}${body}${gameFoot('Swipe more ideas')}</div>`;
+    },
+    after(g) {
+      const card = $('#swipe-card'); if (!card) return;
+      let x0 = null;
+      card.onpointerdown = e => { x0 = e.clientX; card.setPointerCapture(e.pointerId); };
+      card.onpointermove = e => { if (x0 != null) card.style.transform = `translateX(${e.clientX - x0}px) rotate(${(e.clientX - x0) / 20}deg)`; };
+      card.onpointerup = e => {
+        const dx = x0 == null ? 0 : e.clientX - x0; x0 = null; card.style.transform = '';
+        if (Math.abs(dx) > 70) $(`[data-k="swipe"][data-v="${dx > 0 ? 1 : 0}"]`)?.click();
+      };
+    },
+  },
+
+  meld: {
+    title: 'Mind meld', sub: 'Type the first word that comes to mind', coop: true,
+    init(prev) { const g = base('meld', prev); g.i = drawFrom('meld', MELD(), 1)[0]; g.words = {}; return g; },
+    act(g, role, a) {
+      if (a.k === 'word' && !g.result && !g.words[role]) {
+        const w = String(a.v || '').trim().slice(0, 40); if (!w) return;
+        g.words[role] = w;
+        if (g.words.A && g.words.B) {
+          const match = norm(g.words.A) === norm(g.words.B); if (match) g.tally++;
+          g.result = {match};
+          logGame(g, `${MELD()[g.i]}: ${nmT('A')} "${g.words.A}", ${nmT('B')} "${g.words.B}"${match ? '  (mind meld!)' : ''}`);
+        }
+      }
+      if (a.k === 'count' && g.result && !g.result.match) {
+        g.result.match = true; g.result.counted = true; g.tally++;
+        const m = S.minis.meld; if (m && m.lines.length) { m.lines[m.lines.length - 1] += '  (close enough)'; m.summary = this.summary(g); }
+      }
+    },
+    redact(g) { if (!g.result && g.words.A) g.words.A = '?'; },
+    summary: g => `${g.tally} mind meld${g.tally === 1 ? '' : 's'} out of ${g.round}`,
+    view(g) {
+      const m = me(), o = other(m), cue = MELD()[g.i];
+      let body;
+      if (g.result) body = `<div class="face"><div><div class="big2">${esc(g.words[m])}</div><small style="color:var(--${m})">${nm(m)}</small></div><div class="vs">&</div>
+          <div><div class="big2">${esc(g.words[o])}</div><small style="color:var(--${o})">${nm(o)}</small></div></div>
+          <p class="turn">${g.result.match ? (g.result.counted ? 'Close enough. Counted!' : 'Mind meld!') : 'Different minds.'}</p>
+          ${g.result.match ? '' : `<div class="talk"><div class="kicker">Talk about it</div><p>Why did that word come to each of you?</p></div>
+          <button class="btn" data-do="g" data-k="count">Close enough, count it</button><div class="spacer"></div>`}`;
+      else if (g.words[m]) body = `<div class="locked"><div class="kicker">You said</div><div class="big">${esc(g.words[m])}</div></div>
+          <div class="status"><span class="breathe"></span>Waiting for ${partner()}…</div>`;
+      else body = `<div class="row"><input type="text" id="meld-in" maxlength="40" placeholder="First word that comes to mind" autocomplete="off" data-enter="#meld-go">
+          <button class="btn me" id="meld-go" data-do="g" data-k="word" data-input="meld-in">Go</button></div>
+          ${g.words[o] ? `<div class="status done">● ${partner()} has answered</div>` : `<div class="status"><span class="breathe"></span>${partner()} is thinking…</div>`}
+          <p class="fine">Don't overthink it. Matching words score for both of you.</p>`;
+      return `<div>${gameTop('Mind meld', `${g.tally} of ${g.round - (g.result ? 0 : 1)} melded`)}
+        <div class="card center"><div class="kicker">The word is</div><p class="q" style="font-size:38px">${esc(cue)}</p></div>${body}${gameFoot('Next word')}</div>`;
+    },
+  },
+
+  ttl: {
+    title: 'Two truths and a lie', sub: 'Spot the made-up one',
+    init(prev) {
+      const g = base('ttl', prev);
+      g.teller = prev ? other(prev.teller) : (Math.random() < .5 ? 'A' : 'B');
+      g.th = drawFrom('ttl', THEMES(), 1)[0]; g.items = null;
+      return g;
+    },
+    act(g, role, a) {
+      if (a.k === 'write' && role === g.teller && !g.items) {
+        const v = a.v || {}, its = (v.items || []).map(s => String(s || '').trim().slice(0, 160));
+        if (its.length !== 3 || its.some(s => !s) || ![0, 1, 2].includes(v.lie)) return;
+        g.items = shuffle(its.map((t, i) => ({t, lie: i === v.lie})));
+      }
+      if (a.k === 'guess' && role !== g.teller && g.items && !g.result && [0, 1, 2].includes(a.v)) {
+        const right = !!g.items[a.v].lie;
+        g.score[right ? role : g.teller]++;
+        g.result = {pick: a.v, right};
+        logGame(g, `${nmT(g.teller)}: ` + g.items.map(x => (x.lie ? '[LIE] ' : '') + x.t).join(' / ') + `  (${nmT(role)} ${right ? 'spotted it' : 'was fooled'})`);
+      }
+    },
+    redact(g) { if (g.teller === 'A' && g.items && !g.result) g.items = g.items.map(x => ({t: x.t})); },
+    summary: g => `${nmT('A')} ${g.score.A} – ${g.score.B} ${nmT('B')} over ${g.round} round${g.round === 1 ? '' : 's'}`,
+    view(g) {
+      const m = me(), teller = g.teller === m, theme = THEMES()[g.th];
+      let body;
+      if (g.result) {
+        body = `<p class="turn">${g.result.right ? `${nm(other(g.teller))} spotted the lie!` : `${nm(g.teller)} got away with it!`}</p>
+          <div class="opts">${g.items.map((x, i) => `<div class="opt ${x.lie ? 'lie' : ''}">${x.lie ? '<b>Lie:</b> ' : ''}${esc(x.t)}${g.result.pick === i && !x.lie ? ' <span class="tag n">guessed</span>' : ''}</div>`).join('')}</div>
+          <div class="talk"><div class="kicker">Talk about it</div><p>${nm(g.teller)}, tell the full story behind one of the truths.</p></div>`;
+      } else if (teller && !g.items) {
+        const lie = ui.ttlLie;
+        body = `<div class="callout" style="margin:0 0 14px">Need an idea? Theme: <b>${esc(theme)}</b></div>
+          ${[0, 1, 2].map(i => `<div class="row" style="margin-bottom:8px"><input type="text" id="ttl-${i}" maxlength="160" placeholder="Statement ${i + 1}" autocomplete="off">
+          <button class="btn ${lie === i ? 'me' : ''}" data-do="ttl-lie" data-i="${i}" style="min-width:76px">${lie === i ? 'Lie' : 'True'}</button></div>`).join('')}
+          <p class="fine" style="margin:6px 0 12px">Write two true things and one lie, then tap the lie to mark it. The order gets shuffled.</p>
+          <button class="btn me" data-do="ttl-send" ${lie == null ? 'disabled' : ''}>Send to ${partner()}</button>`;
+      } else if (teller) {
+        body = `<div class="opts">${g.items.map(x => `<div class="opt ${x.lie ? 'lie' : ''}">${x.lie ? '<b>Lie:</b> ' : ''}${esc(x.t)}</div>`).join('')}</div>
+          <div class="status"><span class="breathe"></span>${partner()} is hunting for the lie…</div>`;
+      } else if (!g.items) {
+        body = `<div class="locked"><div class="kicker">Theme: ${esc(theme)}</div><div class="big">${partner()} is writing…</div></div>
+          <div class="status"><span class="breathe"></span>Two truths and a lie, coming up</div>`;
+      } else {
+        body = `<p class="turn">Which one is the lie?</p>
+          <div class="opts">${g.items.map((x, i) => `<button class="opt" data-do="g" data-k="guess" data-v="${i}" data-once="ttl${g.round}">${esc(x.t)}</button>`).join('')}</div>`;
+      }
+      return `<div>${gameTop('Two truths and a lie')}${body}${gameFoot('Swap roles')}</div>`;
+    },
+  },
+
+  wyr: pickGuess('wyr', {
+    title: 'Would you rather', sub: 'Pick one, guess theirs',
+    items: () => WYR(), labels: it => it, text: () => 'Would you rather…',
+    you: 'You would rather', them: p => `What will ${p} pick?`,
+    talk: same => same ? 'Easy one, then. When did this last come up in real life?' : 'Make the case for your side in one sentence.',
+  }),
+
+  nhie: pickGuess('nhie', {
+    title: 'Never have I ever', sub: 'Have you? Have they?',
+    options: [['light', 'Light', 'Everyday and funny'], ['flirty', 'Flirty', 'Romantic, playful'], ['deeper', 'Deeper', 'Life and growth']],
+    items: g => NHIE(g.deck), labels: () => ['I have', 'I haven\'t'], text: it => `Never have I ever ${it}.`,
+    deckName: g => ({light: 'Light', flirty: 'Flirty', deeper: 'Deeper'})[g.deck],
+    you: 'You', them: p => `Has ${p}?`,
+    talk: () => 'Whoever has: tell the story. Whoever has not: would you?',
+  }),
+
+  speed: {
+    title: 'Speed round', sub: 'Quick this-or-that against the clock', coop: true,
+    init(prev) { const g = base('speed', prev); g.qs = drawFrom('speed', SPEED(), 12); g.pos = {A: 0, B: 0}; g.ans = {A: [], B: []}; return g; },
+    act(g, role, a) {
+      if (a.k !== 'pick' || g.result || a.i !== g.pos[role] || g.pos[role] >= g.qs.length) return;
+      g.ans[role].push([0, 1].includes(a.v) ? a.v : -1); g.pos[role]++;
+      if (g.pos.A >= g.qs.length && g.pos.B >= g.qs.length) {
+        const same = g.qs.filter((_, i) => g.ans.A[i] !== -1 && g.ans.A[i] === g.ans.B[i]).length;
+        g.tally += same; g.result = {same};
+        logGame(g, `Round ${g.round}: matched ${same} of ${g.qs.length}`);
+      }
+    },
+    redact(g) { if (!g.result) g.ans.A = []; },
+    summary: g => `matched ${g.tally} answers over ${g.round} round${g.round === 1 ? '' : 's'}`,
+    view(g) {
+      const m = me(), o = other(m), n = g.qs.length, Q = SPEED();
+      let body;
+      if (g.result) {
+        body = `<p class="turn">You matched ${g.result.same} of ${n}</p><div class="notes">${g.qs.map((q, i) => {
+          const pick = r => g.ans[r][i] === -1 ? 'too slow' : Q[q][g.ans[r][i]];
+          const same = g.ans.A[i] !== -1 && g.ans.A[i] === g.ans.B[i];
+          return `<div class="note">${esc(Q[q][0])} or ${esc(Q[q][1])} ${same ? '<span class="tag y">match</span>' : ''}<small>${nm(m)}: ${esc(pick(m))} · ${nm(o)}: ${esc(pick(o))}</small></div>`;
+        }).join('')}</div><div class="spacer"></div>`;
+      } else if (g.pos[m] < n) {
+        const q = Q[g.qs[g.pos[m]]], key = `sp${g.round}:${g.pos[m]}`;
+        const elapsed = ui.speedKey === key ? Date.now() - ui.speedStart : 0;
+        body = `<div class="progress"><span>${g.pos[m] + 1} of ${n}</span><span>${partner()}: ${g.pos[o]} of ${n}</span></div>
+          <div class="timer"><div style="animation-duration:${SPEED_SECS}s;animation-delay:-${elapsed}ms"></div></div>
+          <div class="speed">${q.map((t, v) => `<button class="opt big3" data-do="g" data-k="pick" data-i="${g.pos[m]}" data-v="${v}" data-once="${key}">${esc(t)}</button>`).join('<div class="vs">or</div>')}</div>
+          <p class="fine">Go with your gut. ${SPEED_SECS} seconds each.</p>`;
+      } else body = `<div class="locked"><div class="kicker">Done</div><div class="big">Waiting for ${partner()}</div></div>
+          <div class="status"><span class="breathe"></span>${partner()} is on ${g.pos[o]} of ${n}</div>`;
+      return `<div>${gameTop('Speed round', `${g.tally} matches so far`)}${body}${gameFoot('Another round')}</div>`;
+    },
+    after(g) {
+      const m = me(); if (g.result || g.pos[m] >= g.qs.length) return;
+      const i = g.pos[m], key = `sp${g.round}:${i}`;
+      if (ui.speedKey === key) return;
+      ui.speedKey = key; ui.speedStart = Date.now(); clearTimeout(ui.speedT);
+      ui.speedT = setTimeout(() => {
+        if (ui.speedKey !== key || ui.once === key) return;
+        ui.once = key; act({k: 'g', a: {k: 'pick', i, v: -1}});
+      }, SPEED_SECS * 1000);
+    },
+  },
+
+  story: {
+    title: 'Story ping-pong', sub: 'Write a story together, a line each', coop: true,
+    init(prev) {
+      const g = base('story', prev); g.s = drawFrom('story', STARTERS(), 1)[0]; g.lines = [];
+      g.first = prev ? other(prev.first) : (Math.random() < .5 ? 'A' : 'B'); g.turn = g.first;
+      return g;
+    },
+    act(g, role, a) {
+      if (a.k === 'add' && !g.result && role === g.turn) {
+        const t = String(a.v || '').trim().slice(0, 240); if (!t) return;
+        g.lines.push({by: role, t}); g.turn = other(role);
+        const said = g.lines.filter(l => l.by !== 'twist').length;
+        if (said % 4 === 0) g.lines.push({by: 'twist', t: TWISTS()[drawFrom('twist', TWISTS(), 1)[0]]});
+      }
+      if (a.k === 'end' && !g.result && g.lines.filter(l => l.by !== 'twist').length >= 4) {
+        g.result = {}; g.tally++;
+        logGame(g, storyText(g));
+      }
+    },
+    summary: g => `${g.tally} ${g.tally === 1 ? 'story' : 'stories'} written together`,
+    view(g) {
+      const m = me(), said = g.lines.filter(l => l.by !== 'twist').length;
+      const lines = g.lines.map(l => l.by === 'twist'
+        ? `<div class="callout"><b>Plot twist:</b> ${esc(l.t)}</div>`
+        : `<p class="line ${l.by}">${esc(l.t)}</p>`).join('');
+      let body;
+      if (g.result) body = `<p class="turn">The end.</p><button class="btn" data-do="copy-story">Copy the story</button><div class="spacer"></div>`;
+      else if (g.turn === m) body = `<div class="row"><input type="text" id="story-in" maxlength="240" placeholder="Add the next line…" autocomplete="off" data-enter="#story-go">
+          <button class="btn me" id="story-go" data-do="g" data-k="add" data-input="story-in">Add</button></div>
+          <p class="fine">Every four lines, a plot twist drops in.</p>
+          ${said >= 4 ? '<div class="center"><button class="linkish" data-do="g" data-k="end">Finish the story here</button></div>' : ''}`;
+      else body = `<div class="status"><span class="breathe"></span>${partner()} is writing the next line…</div>
+          ${said >= 4 ? '<div class="center"><button class="linkish" data-do="g" data-k="end">Finish the story here</button></div>' : ''}`;
+      return `<div>${gameTop('Story ping-pong', `${said} line${said === 1 ? '' : 's'}`)}
+        <div class="card story"><p class="starter">${esc(STARTERS()[g.s])}</p>${lines}</div>${body}${gameFoot('New story')}</div>`;
+    },
+  },
+
+  draw: {
+    title: 'Draw and guess', sub: 'One draws, the other guesses', coop: true,
+    options: [['easy', 'Easy', 'Single things'], ['medium', 'Trickier', 'Scenes and actions']],
+    init(prev) {
+      const g = base('draw', prev); g.deck = deckOf('draw', prev);
+      g.drawer = prev ? other(prev.drawer) : (Math.random() < .5 ? 'A' : 'B');
+      g.word = WORDS(g.deck)[drawFrom('draw' + g.deck, WORDS(g.deck), 1)[0]]; g.guesses = []; g.sheet = 0;
+      return g;
+    },
+    act(g, role, a) {
+      if (a.k === 'guess' && role !== g.drawer && !g.result) {
+        const t = String(a.v || '').trim().slice(0, 60); if (!t) return;
+        const w = norm(g.word), n = norm(t);
+        const ok = n === w || (w.length > 3 && n.includes(w)) || (n.length > 3 && w.split(' ').length > 1 && w.includes(n) && n.length >= w.length * .6);
+        g.guesses.push({t, ok});
+        if (ok) { g.tally++; g.result = {got: true}; logGame(g, `${nmT(g.drawer)} drew "${g.word}": guessed in ${g.guesses.length}`); }
+      }
+      if (a.k === 'giveup' && !g.result) { g.result = {got: false}; logGame(g, `${nmT(g.drawer)} drew "${g.word}": not guessed`); }
+      if (a.k === 'skip' && role === g.drawer && !g.result) {
+        g.word = WORDS(g.deck)[drawFrom('draw' + g.deck, WORDS(g.deck), 1)[0]]; g.guesses = []; g.sheet++;
+      }
+    },
+    redact(g) { if (g.drawer === 'A' && !g.result) { g.hint = g.word.replace(/\S/g, '_'); delete g.word; } },
+    summary: g => `${g.tally} drawing${g.tally === 1 ? '' : 's'} guessed out of ${g.round}`,
+    view(g) {
+      const m = me(), drawing = g.drawer === m;
+      const hint = (g.word || g.hint || '').replace(/\S/g, '_ ').trim();
+      const wrong = g.guesses.filter(x => !x.ok).map(x => `<span class="chip ro">${esc(x.t)}</span>`).join('');
+      let head, below;
+      if (g.result) {
+        head = `<p class="turn">${g.result.got ? `${nm(other(g.drawer))} got it!` : 'Nobody got it'}</p><div class="center kicker">The word was <b>${esc(g.word)}</b></div>`;
+        below = '';
+      } else if (drawing) {
+        head = `<div class="center"><div class="kicker">Draw this</div><p class="q" style="margin-bottom:10px">${esc(g.word)}</p></div>`;
+        below = `<div class="row"><button class="btn" data-do="ink-clear">Clear</button><button class="btn" data-do="g" data-k="skip">New word</button></div>
+          <p class="fine">No letters or numbers! ${partner()}'s guesses appear below.</p>`;
+      } else {
+        head = `<div class="center"><div class="kicker">${partner()} is drawing</div><p class="q hint">${esc(hint)}</p></div>`;
+        below = `<div class="row"><input type="text" id="draw-in" maxlength="60" placeholder="Your guess" autocomplete="off" data-enter="#draw-go">
+          <button class="btn me" id="draw-go" data-do="g" data-k="guess" data-input="draw-in">Guess</button></div>
+          <div class="center"><button class="linkish" data-do="g" data-k="giveup">Give up</button></div>`;
+      }
+      return `<div>${gameTop('Draw and guess', `${g.tally} guessed`)}${head}
+        <canvas id="ink" class="${drawing && !g.result ? 'can' : ''}"></canvas>
+        ${wrong ? `<div class="chips" style="margin:10px 0">${wrong}</div>` : ''}${below}${gameFoot('Swap and draw')}</div>`;
+    },
+    after(g) { setupInk(g); },
+  },
+};
+for (const [k, d] of Object.entries(GAMES)) MODES[k] = [d.title, d.sub];
+
+function storyText(g) {
+  return [STARTERS()[g.s], ...g.lines.map(l => l.by === 'twist' ? `[Plot twist: ${l.t}]` : l.t)].join('\n');
+}
+
+/* ---- Shared drawing canvas: strokes go straight to the other phone, not through game state ---- */
+const inkKey = g => `${S.room}:${g.round}:${g.sheet || 0}`;
+function inkRedraw() {
+  const cv = $('#ink'); if (!cv || !ui.ink) return;
+  const ctx = cv.getContext('2d'), W = cv.width;
+  ctx.clearRect(0, 0, W, W);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(2, W * .012); ctx.strokeStyle = '#2a2430';
+  for (const id of ui.ink.order) {
+    const p = ui.ink.strokes[id]; if (!p || p.length < 2) continue;
+    ctx.beginPath(); ctx.moveTo(p[0] * W, p[1] * W);
+    if (p.length === 2) ctx.lineTo(p[0] * W + .5, p[1] * W + .5);
+    for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i] * W, p[i + 1] * W);
+    ctx.stroke();
+  }
+}
+function inkIn(m) {
+  const g = S && S.game; if (!g || g.kind !== 'draw' || m.k !== inkKey(g)) return;
+  if (!ui.ink || ui.ink.key !== m.k) ui.ink = {key: m.k, strokes: {}, order: []};
+  if (m.clear) { ui.ink.strokes = {}; ui.ink.order = []; }
+  else if (Array.isArray(m.pts) && m.pts.length <= 4000) {
+    const had = ui.ink.strokes[m.id];
+    if (!had) ui.ink.order.push(m.id);
+    if (!had || m.pts.length >= had.length) ui.ink.strokes[m.id] = m.pts.map(Number);
+  }
+  inkRedraw();
+}
+function setupInk(g) {
+  const cv = $('#ink'); if (!cv) return;
+  const key = inkKey(g);
+  if (!ui.ink || ui.ink.key !== key) ui.ink = {key, strokes: {}, order: []};
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr);
+  inkRedraw();
+  if (g.drawer !== me() || g.result) return;
+  let cur = null, lastSend = 0;
+  const pt = e => { const r = cv.getBoundingClientRect(); return [+((e.clientX - r.left) / r.width).toFixed(3), +((e.clientY - r.top) / r.height).toFixed(3)]; };
+  const send = () => { if (T && cur) T.send({t: 'ink', k: key, id: cur.id, pts: cur.pts}); lastSend = Date.now(); };
+  cv.onpointerdown = e => {
+    e.preventDefault(); cv.setPointerCapture(e.pointerId); ui.drawing = true;
+    cur = {id: Math.random().toString(36).slice(2, 9), pts: pt(e)};
+    ui.ink.strokes[cur.id] = cur.pts; ui.ink.order.push(cur.id); inkRedraw();
+  };
+  cv.onpointermove = e => {
+    if (!cur) return;
+    cur.pts.push(...pt(e)); inkRedraw();
+    if (Date.now() - lastSend > 90) send();
+  };
+  const up = () => {
+    if (!cur) return; send(); cur = null; ui.drawing = false;
+    if (ui.pendingRender) { ui.pendingRender = false; render(); }
+  };
+  cv.onpointerup = up; cv.onpointercancel = up;
+}
+
 function blankDraw(g) {
   const src = BLANK[g.deck];
   if (!g.pile.length) g.pile = shuffle(src.answers.filter(t => !g.hands.A.includes(t) && !g.hands.B.includes(t)));
@@ -731,7 +1220,8 @@ function viewForGuest() {
     if (v.game.played.A && !v.game.played.B) v.game.played.A = '?';          // played, but face down
     if (v.game.votes.A && !v.game.result) v.game.votes.A = '?';
   }
-  delete v.seen;
+  delete v.seen; delete v.used;
+  if (v.game && GAMES[v.game.kind] && GAMES[v.game.kind].redact) GAMES[v.game.kind].redact(v.game);
   return v;
 }
 function act(a) {
@@ -761,6 +1251,7 @@ const handlers = {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'react') return floatEmoji(m.e, other(session.role));
     if (m.t === 'end') return leaveRoom(String(m.name || 'Your partner').slice(0, 24));
+    if (m.t === 'ink') return inkIn(m);
     if (session.role === 'A') {
       if (m.t === 'act' && m.a) { reduce('B', m.a); afterChange(); }
       else if (m.t === 'hello') { reduce('B', {k: 'hello', name: m.name}); afterChange(); }
@@ -965,7 +1456,7 @@ function enterRoom() {
   if (session.role === 'A') {
     S = store.get('tt-state-' + session.room) || initState(session.room, session.name);
     S.mode = S.mode || 'cards'; S.seen = S.seen || []; S.game = S.game || null;   // rooms saved by older versions
-    S.log = S.log || S.history.slice(); S.minis = S.minis || {}; S.started = S.started || Date.now();
+    S.log = S.log || S.history.slice(); S.minis = S.minis || {}; S.started = S.started || Date.now(); S.used = S.used || {};
   }
   render(); connect();
 }
@@ -997,7 +1488,8 @@ function shareLink() {
 const me = () => session.role;
 const nm = r => esc((S && S.names[r]) || (r === me() ? session.name : 'your partner'));
 const partner = () => nm(other(me()));
-const screenKey = () => !session ? 'home' : !S ? 'wait' : `${S.phase}:${S.idx}`;
+const screenKey = () => !session ? 'home' : !S ? 'wait'
+  : S.phase === 'game' && S.game ? `game:${S.game.kind}:${S.game.round}` : `${S.phase}:${S.idx}`;
 
 function renderTop() {
   const c = $('#conn');
@@ -1049,6 +1541,11 @@ function resultsText() {
   if (Object.keys(minis).length) {
     out.push('MINI-GAMES');
     for (const [k, m] of Object.entries(minis)) {
+      if (m.title) {   // plug-in games write their own summary and lines
+        out.push(`${m.title}: ${m.summary}`);
+        m.lines.forEach(l => out.push('   ' + String(l).replace(/\n/g, '\n   ')));
+        continue;
+      }
       out.push(`${names[k] || k}: ${n('A')} ${m.wins.A} – ${m.wins.B} ${n('B')}  (${m.rounds} round${m.rounds === 1 ? '' : 's'}${k.startsWith('blank') ? `, agreed ${m.sync}` : ''})`);
       if (k.startsWith('blank')) m.lines.forEach(l => out.push(`   "${l.p}"`, `      ${n('A')}: ${l.A}`, `      ${n('B')}: ${l.B}`,
         `      ${l.v.A === l.v.B ? `Both picked ${n(l.v.A)}'s` : 'Split vote'}`));
@@ -1103,6 +1600,7 @@ function renderSheet() {
 
 let lastKey = null;
 function render() {
+  if (ui.drawing) { ui.pendingRender = true; return; }   // never swap the canvas out mid-stroke
   renderTop();
   const app = $('#app');
   const key = screenKey();
@@ -1117,8 +1615,10 @@ function render() {
   if (key !== lastKey) { const first = app.firstElementChild; if (first) first.classList.add('pop'); window.scrollTo({top: 0}); }
   lastKey = key;
   const r = $('#reacts');
-  r.classList.toggle('show', !!(session && S && S.phase !== 'lobby'));
+  r.classList.toggle('show', !!(session && S && S.phase !== 'lobby' && !(S.game && S.game.kind === 'draw')));
   if (!r.innerHTML) r.innerHTML = REACTS.map(e => `<button data-do="react" data-e="${e}" aria-label="send ${e}">${e}</button>`).join('');
+  const g = S && S.phase === 'game' && S.game;
+  if (g && GAMES[g.kind] && GAMES[g.kind].after) GAMES[g.kind].after(g);
 }
 
 function view() {
@@ -1129,7 +1629,8 @@ function view() {
     case 'card': return viewCard();
     case 'reveal': return viewReveal();
     case 'end': return viewEnd();
-    case 'game': return !S.game ? '' : S.game.kind === 'ttt' ? viewTTT() : S.game.kind === 'blank' ? viewBlank() : viewRPS();
+    case 'game': return !S.game ? '' : GAMES[S.game.kind] ? GAMES[S.game.kind].view(S.game)
+      : S.game.kind === 'ttt' ? viewTTT() : S.game.kind === 'blank' ? viewBlank() : viewRPS();
   }
   return '';
 }
@@ -1204,6 +1705,8 @@ function viewLobby() {
     ${S.mode === 'blank' ? `<div class="panel"><div class="kicker">Which deck</div><div class="seg">${
       [['light', 'Silly', 'Daft and fun'], ['deep', 'Deeper', 'Honest, still playful']].map(([k, t, s]) =>
         `<button class="chip ${(st.blank || 'light') === k ? 'on' : ''} ${host ? '' : 'ro'}" ${host ? `data-do="bdeck" data-k="${k}"` : ''}>${t}<small>${s}</small></button>`).join('')}</div></div>` : ''}
+    ${GAMES[S.mode] && GAMES[S.mode].options ? `<div class="panel"><div class="kicker">Which deck</div><div class="seg">${
+      GAMES[S.mode].options.map(([k, t, s]) => `<button class="chip ${(st['opt_' + S.mode] || GAMES[S.mode].options[0][0]) === k ? 'on' : ''} ${host ? '' : 'ro'}" ${host ? `data-do="gopt" data-v="${k}"` : ''}>${t}<small>${s}</small></button>`).join('')}</div></div>` : ''}
     ${host ? `<button class="btn primary" data-do="start" ${partnerHere && (S.mode !== 'cards' || st.cats.length) ? '' : 'disabled'}>${partnerHere ? (S.mode === 'cards' ? 'Deal the first card' : 'Start ' + MODES[S.mode][0]) : 'Waiting for your partner…'}</button>` : ''}
     <p class="fine">Tip: either of you can skip a card that does not feel right. No reason needed.</p>
     <div class="center"><button class="linkish" data-do="ask-leave">Leave room</button></div>
@@ -1211,10 +1714,11 @@ function viewLobby() {
 }
 
 /* ---- Mini-games ---- */
-function gameTop(title) {
+function gameTop(title, together) {
   const g = S.game;
   return `<div class="progress"><span>${title}</span><span>Round ${g.round}</span></div>
-    <div class="scoreline"><span class="A">${nm('A')} · ${g.score.A}</span><span class="B">${g.score.B} · ${nm('B')}</span></div>`;
+    ${together != null ? `<div class="scoreline"><span>Together: ${esc(together)}</span></div>`
+      : `<div class="scoreline"><span class="A">${nm('A')} · ${g.score.A}</span><span class="B">${g.score.B} · ${nm('B')}</span></div>`}`;
 }
 function gameFoot(nextLabel) {
   const g = S.game;
@@ -1488,6 +1992,39 @@ document.addEventListener('click', e => {
       return act({k: 'settings', cats});
     }
     case 'start': return act({k: 'start'});
+    case 'g': {   // plug-in game move: data-k is the move, data-i / data-v / data-input carry its value
+      if (session.role === 'B' && !peerOnline) { toast('Not connected yet, hang on a second…'); return; }
+      if (b.dataset.once) { if (ui.once === b.dataset.once) return; ui.once = b.dataset.once; }
+      const num = x => x == null || x === '' ? undefined : (isNaN(+x) ? x : +x);
+      let v = num(b.dataset.v);
+      if (b.dataset.input) {
+        const inp = document.getElementById(b.dataset.input);
+        v = inp ? inp.value.trim() : '';
+        if (!v) { inp && inp.focus(); return; }
+        inp.value = '';
+      }
+      return act({k: 'g', a: {k: b.dataset.k, i: num(b.dataset.i), v}});
+    }
+    case 'gopt': return act({k: 'gopt', v: b.dataset.v});
+    case 'pg': ui.pg[b.dataset.f] = Number(b.dataset.i); return render();
+    case 'pg-lock': return act({k: 'g', a: {k: 'pick', v: {self: ui.pg.self, guess: ui.pg.guess}}});
+    case 'ttl-lie': ui.ttlLie = Number(b.dataset.i); return render();
+    case 'ttl-send': {
+      const items = [0, 1, 2].map(i => ($('#ttl-' + i)?.value || '').trim());
+      if (items.some(s => !s)) { toast('Write all three first'); return; }
+      act({k: 'g', a: {k: 'write', v: {items, lie: ui.ttlLie}}}); ui.ttlLie = null;
+      [0, 1, 2].forEach(i => { const el = $('#ttl-' + i); if (el) el.value = ''; });
+      return;
+    }
+    case 'ink-clear': {
+      const g = S.game; if (!g || !ui.ink) return;
+      ui.ink.strokes = {}; ui.ink.order = []; inkRedraw();
+      if (T) T.send({t: 'ink', k: inkKey(g), clear: true});
+      return;
+    }
+    case 'copy-story':
+      navigator.clipboard.writeText(storyText(S.game)).then(() => toast('Story copied'), () => toast('Copy failed'));
+      return;
     case 'mode': return act({k: 'mode', mode: b.dataset.m});
     case 'bdeck': return act({k: 'blank_deck', deck: b.dataset.k});
     case 'ttt': return act({k: 'ttt_move', i: Number(b.dataset.i)});
@@ -1537,6 +2074,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
+  if (e.target.dataset && e.target.dataset.enter) { e.preventDefault(); $(e.target.dataset.enter)?.click(); return; }
   if (e.target.id === 'note') { e.preventDefault(); $('[data-do="note"]').click(); }
   if (e.target.id === 'code' || (e.target.id === 'name' && ui.joinCode)) { e.preventDefault(); joinRoom(); }
 });

@@ -15,6 +15,15 @@ last-minute plans, how to invite each other to things, how to handle disagreemen
   - *Rock, paper, truth*: secret picks; the loser answers a question from the card pool.
   - *Fill the blank*: a fill-in-the-blank card game with original Silly and Deeper decks. You each play an answer
     card from your hand into the prompt, then both vote. Agree and that card scores; disagree and you both do.
+  - *Date swipe*: swipe on 110 date ideas (calm, in between, spontaneous); see your matches and each other's solo picks.
+  - *Mind meld*: both type the first word a cue brings to mind; matching words score together.
+  - *Two truths and a lie*: take turns writing three statements (with theme ideas); the other spots the lie.
+  - *Would you rather* and *Never have I ever* (Light, Flirty, Deeper decks): answer for yourself, guess your partner.
+  - *Speed round*: twelve quick this-or-thats, five seconds each, then see how many you matched.
+  - *Story ping-pong*: write a story a line each from a random opener; a plot twist lands every four lines.
+  - *Draw and guess*: one draws, the strokes appear live on the other phone, the other guesses.
+- **Variety:** pools are dealt without repeats until used up. Content lives in `content.js` (edit or add freely).
+- **Leave** (top right) offers a download of everything you played, then ends the room on both phones.
 - **Synced:** both phones move together. The next card comes only when you are *both* ready, so nobody gets rushed.
 - **Skip** any card, no reason needed. Send **emoji reactions** that float up on the other phone.
 - **Notes:** save "things to remember about each other". You get them all at the end, with a copy button.

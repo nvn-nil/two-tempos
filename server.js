@@ -82,6 +82,10 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
     return fs.createReadStream(INDEX).pipe(res);
   }
+  if (url.pathname === '/content.js') {
+    res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' });
+    return fs.createReadStream(path.join(__dirname, 'content.js')).on('error', () => res.end()).pipe(res);
+  }
   res.writeHead(404); res.end('not found');
 });
 
