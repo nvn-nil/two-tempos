@@ -7,7 +7,7 @@ Built around one calm, plan-ahead person and one spontaneous, social person: soc
 last-minute plans, how to invite each other to things, how to handle disagreements.
 
 - **Card types:** sliders (place yourself, guess them), this-or-that (pick, guess), open answers.
-- **Decks:** 8 / 12 / 16 / 24 cards, from light to deeper, drawn at random from 109 cards across 13 topics:
+- **Decks:** 8 / 12 / 16 / 24 cards, from light to deeper, drawn at random from 109 cards across 12 topics:
   Warm-up, Energy & recharge, Plans vs. spontaneity, Love & care, Playful, Dates & adventures, Home & habits,
   Our story, Growing up, Dreams & someday, Flirty, Deeper. Cards you have already played come last, so new rounds stay fresh.
 - **Mini-games**, from the same lobby:
