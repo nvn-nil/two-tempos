@@ -48,7 +48,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.45}
 .or{text-align:center;color:var(--muted);font-size:13px;margin:16px 0 10px}
 .fine{color:var(--muted);font-size:13px;text-align:center;margin:18px 0}
 .kicker{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px}
-.code{font-size:56px;letter-spacing:.14em;line-height:1.1;margin:4px 0 14px}
+.code{font-size:clamp(34px,11vw,52px);letter-spacing:.12em;line-height:1.1;margin:4px 0 14px}
 .waiting{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--muted)}
 .breathe{width:10px;height:10px;border-radius:50%;background:var(--them);animation:breathe 2.4s ease-in-out infinite}
 @keyframes breathe{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.25);opacity:1}}
@@ -276,7 +276,8 @@ function toast(msg) {
 }
 function newCode() {
   const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  return Array.from(crypto.getRandomValues(new Uint8Array(4)), b => abc[b % abc.length]).join('');
+  // 6 characters: the room code is also the encryption key for the public relay.
+  return Array.from(crypto.getRandomValues(new Uint8Array(6)), b => abc[b % abc.length]).join('');
 }
 
 /* ---------------------------------------------------------------------------
@@ -382,7 +383,7 @@ function broadcast() {
 }
 
 /* ---------------------------------------------------------------------------
-   Transports: relay (our tiny server) or PeerJS (static hosting, peer to peer)
+   Transports: relay (our tiny server), MQTT (static hosting, default) or PeerJS (opt-in)
 --------------------------------------------------------------------------- */
 const handlers = {
   msg(m) {
@@ -410,15 +411,86 @@ const handlers = {
 
 async function pickTransport() {
   const q = new URLSearchParams(location.search).get('transport');
-  if (q === 'peer' || q === 'relay') return q;
-  if (location.protocol === 'file:') return 'peer';
+  if (q === 'peer' || q === 'relay' || q === 'mqtt') return q;
+  if (location.protocol === 'file:') return 'mqtt';
   try {
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 2500);
     const r = await fetch('/api/ping', {signal: ctl.signal, cache: 'no-store'});
     clearTimeout(tm);
     if (r.ok && (await r.json()).ok) return 'relay';
   } catch {}
-  return 'peer';
+  return 'mqtt';
+}
+
+/* MQTT over a public broker: works from any static host and any network (plain
+   wss on port 443-style ports, no peer-to-peer). Everything is end-to-end
+   encrypted with a key derived from the room code, and topics are hashed, so
+   the broker only ever sees noise. */
+const BROKER = new URLSearchParams(location.search).get('broker') || 'wss://broker.emqx.io:8084/mqtt';
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function roomCrypto(room) {
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey('raw', enc.encode(room), 'PBKDF2', false, ['deriveKey', 'deriveBits']);
+  const key = await crypto.subtle.deriveKey({name: 'PBKDF2', salt: enc.encode('two-tempos/key/v1'), iterations: 150000, hash: 'SHA-256'},
+    base, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+  const tbits = await crypto.subtle.deriveBits({name: 'PBKDF2', salt: enc.encode('two-tempos/topic/v1'), iterations: 1000, hash: 'SHA-256'}, base, 128);
+  const topic = 'twotempos/v1/' + [...new Uint8Array(tbits)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return {
+    topic,
+    async seal(obj) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = await crypto.subtle.encrypt({name: 'AES-GCM', iv}, key, enc.encode(JSON.stringify(obj)));
+      return b64(iv) + '.' + b64(ct);
+    },
+    async open(s) {
+      const [iv, ct] = String(s).split('.');
+      const pt = await crypto.subtle.decrypt({name: 'AES-GCM', iv: unb64(iv)}, key, unb64(ct));
+      return JSON.parse(new TextDecoder().decode(pt));
+    },
+  };
+}
+async function mqttTransport(room, role, h) {
+  if (!window.mqtt) await loadScript('https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js');
+  const c = await roomCrypto(room);
+  const me = role, them = other(role);
+  const T_IN = `${c.topic}/to${me}`, T_OUT = `${c.topic}/to${them}`;
+  const P_ME = `${c.topic}/here${me}`, P_THEM = `${c.topic}/here${them}`;
+  // Presence is a heartbeat: public brokers don't reliably keep retained messages.
+  let themHere = false, lastSeen = 0, dead = false;
+  const client = mqtt.connect(BROKER, {
+    clean: true, keepalive: 20, reconnectPeriod: 2000, connectTimeout: 10000,
+    clientId: 'tt_' + Math.random().toString(36).slice(2, 12),
+  });
+  const beat = () => { if (client.connected && !dead) client.publish(P_ME, 'here', {qos: 0}); };
+  const gone = () => { if (themHere) { themHere = false; h.peer(false); } };
+  client.on('connect', () => {
+    h.status('ok');
+    client.subscribe([T_IN, P_THEM], {qos: 1}, () => beat());
+  });
+  client.on('reconnect', () => h.status('reconnecting'));
+  client.on('offline', () => { h.status('reconnecting'); gone(); });
+  client.on('error', () => h.status('reconnecting'));
+  client.on('message', async (topic, payload) => {
+    const text = payload.toString();
+    if (topic === P_THEM) {
+      if (text === 'bye') return gone();
+      lastSeen = Date.now();
+      if (!themHere) { themHere = true; beat(); h.peer(true); }   // answer at once so they see us too
+      return;
+    }
+    let m; try { m = await c.open(text); } catch { return; }   // not ours, or tampered with
+    h.msg(m);
+  });
+  const iv = setInterval(() => { beat(); if (themHere && Date.now() - lastSeen > 14000) gone(); }, 4000);
+  const bye = () => { if (client.connected) client.publish(P_ME, 'bye', {qos: 0}); };
+  window.addEventListener('pagehide', bye);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) beat(); });
+  return {
+    kind: 'mqtt',
+    async send(m) { client.publish(T_OUT, await c.seal(m), {qos: 1}); },
+    close() { dead = true; clearInterval(iv); bye(); client.end(false); },
+  };
 }
 
 function relayTransport(room, role, h) {
@@ -485,6 +557,7 @@ async function connect() {
   link = 'connecting'; renderTop();
   try {
     T = kind === 'relay' ? relayTransport(session.room, session.role, handlers)
+      : kind === 'mqtt'  ? await mqttTransport(session.room, session.role, handlers)
                          : await peerTransport(session.room, session.role, handlers);
   } catch (e) {
     link = 'error'; renderTop(); toast('Could not reach the connection service. Check your internet.');

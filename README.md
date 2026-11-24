@@ -27,12 +27,14 @@ Then both phones open `http://<this-PC's-LAN-IP>:8787`. One taps **Start a room*
 New → Web Service, pick the repo, build command: none, start command `node server.js`. Done.
 The free tier sleeps when idle, so the first load can take ~30 s. Fly.io or Railway work the same way.
 
-**Option B: static hosting, no server.** Put just `index.html` on GitHub Pages, Netlify Drop or Cloudflare Pages.
-With no `/api` server, the page switches to peer-to-peer mode (PeerJS, free public broker).
-Works on most networks. Some mobile carriers block direct peer connections, so if you get stuck on
-"Finding your partner…" over 4G/5G, use Option A.
+**Option B: static hosting, no server (what https://nvn-nil.github.io/two-tempos/ uses).**
+Put just `index.html` on GitHub Pages, Netlify or Cloudflare Pages. With no `/api` server, the phones talk
+through a free public MQTT broker (`broker.emqx.io`) over secure websockets, which works on any network.
+Every message is end-to-end encrypted (AES-GCM, key derived from the 6-character room code) and topics are
+hashed, so the broker only sees noise. Use another broker with `?broker=wss://host:port/path` (both phones must match).
 
-Force a mode with `?transport=relay` or `?transport=peer`.
+Force a mode with `?transport=relay`, `?transport=mqtt` or `?transport=peer` (direct WebRTC; often blocked
+on mobile networks and home routers, so it's opt-in only).
 
 ## How it works
 
