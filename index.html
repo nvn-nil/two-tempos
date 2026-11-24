@@ -67,6 +67,8 @@ textarea{resize:vertical;min-height:110px;line-height:1.45}
 .sub .sw{width:10px;height:10px;border-radius:50%;background:var(--me)} .sub .sw.t{background:var(--them)}
 input[type=range]{width:100%;height:36px;margin:0;accent-color:var(--me);cursor:pointer}
 input[type=range].t{accent-color:var(--them)}
+input[type=range].untouched{opacity:.45;filter:grayscale(.6)}
+.hint{text-align:center;color:var(--muted);font-size:14px;margin:0 0 10px}
 .ends{display:flex;justify-content:space-between;gap:16px;font-size:13px;color:var(--muted);margin-top:-2px}
 .ends span:last-child{text-align:right}
 .opts{display:grid;gap:8px}
@@ -77,8 +79,10 @@ input[type=range].t{accent-color:var(--them)}
 .status.done{color:var(--ok)}
 .locked{text-align:center;padding:10px 0}
 .locked .big{font-size:24px;margin:6px 0}
-.track{position:relative;height:56px;margin:8px 10px 0}
-.track::before{content:"";position:absolute;left:0;right:0;top:27px;height:3px;border-radius:3px;background:var(--line)}
+.track{position:relative;height:76px;margin:8px 14px 0}
+.track::before,.track::after{content:"";position:absolute;left:0;right:0;height:3px;border-radius:3px;background:var(--line)}
+.track::before{top:19px}.track::after{top:55px}
+.track .lane-a{top:20px}.track .lane-b{top:56px}
 .dot,.ring{position:absolute;top:28px;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;transition:left .6s cubic-bezier(.2,.8,.2,1)}
 .dot{width:30px;height:30px;color:#fff;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .ring{width:22px;height:22px;background:var(--paper);border:3px dashed;z-index:1}
@@ -711,6 +715,10 @@ function viewLobby() {
       <div class="seg">${lens}</div>
       <div class="kicker" style="margin-top:18px">What to talk about</div>
       <div class="chips">${cats}</div>
+      ${(() => {
+        const avail = 1 + CARDS.filter(c => c.id !== 'bat' && st.cats.includes(c.cat)).length;
+        return avail < st.len ? `<p class="hint" style="margin:14px 0 0;text-align:left">These topics have ${avail} cards, so this game will be ${avail} long. Add a topic for more.</p>` : '';
+      })()}
     </div>
     ${host ? `<button class="btn primary" data-do="start" ${partnerHere && st.cats.length ? '' : 'disabled'}>${partnerHere ? 'Deal the first card' : 'Waiting for your partner…'}</button>` : ''}
     <p class="fine">Tip: either of you can skip a card that does not feel right. No reason needed.</p>
@@ -727,7 +735,8 @@ function ensureDraft() {
   const key = S.room + ':' + S.idx;
   if (draft.key !== key) {
     const card = BYID[S.deck[S.idx]];
-    draft = {key, self: card.type === 's' ? 50 : card.type === 'c' ? null : '', guess: card.type === 's' ? 50 : null};
+    draft = {key, self: card.type === 's' ? 50 : card.type === 'c' ? null : '', guess: card.type === 's' ? 50 : null,
+             moved: {self: false, guess: false}};   // sliders must be dragged, so 50 is never a silent default
   }
 }
 
@@ -743,13 +752,14 @@ function viewCard() {
       <button class="btn ghost" data-do="unlock">Change my answer</button>`;
   } else if (card.type === 's') {
     body = `<div class="sub"><span class="sw"></span>Where are you?</div>
-      <input type="range" id="r-self" min="0" max="100" value="${draft.self}" data-draft="self">
+      <input type="range" id="r-self" class="${draft.moved.self ? '' : 'untouched'}" min="0" max="100" value="${draft.self}" data-draft="self">
       <div class="ends"><span>${esc(card.l)}</span><span>${esc(card.r)}</span></div>
       <div class="sub"><span class="sw t"></span>Where do you think ${partner()} is?</div>
-      <input type="range" class="t" id="r-guess" min="0" max="100" value="${draft.guess}" data-draft="guess">
+      <input type="range" class="t ${draft.moved.guess ? '' : 'untouched'}" id="r-guess" min="0" max="100" value="${draft.guess}" data-draft="guess">
       <div class="ends"><span>${esc(card.l)}</span><span>${esc(card.r)}</span></div>
       <div class="spacer"></div>${pStatus}
-      <button class="btn me" data-do="lock">Lock in</button>`;
+      <p class="hint" id="slide-hint" ${draft.moved.self && draft.moved.guess ? 'hidden' : ''}>Drag both sliders to lock in</p>
+      <button class="btn me" data-do="lock" ${draft.moved.self && draft.moved.guess ? '' : 'disabled'}>Lock in</button>`;
   } else if (card.type === 'c') {
     const opts = (f, cls) => card.o.map((t, i) => `<button class="opt ${cls} ${draft[f] === i ? 'on' : ''}" data-do="pick" data-f="${f}" data-i="${i}">${esc(t)}</button>`).join('');
     body = `<div class="sub"><span class="sw"></span>Your answer</div><div class="opts">${opts('self', '')}</div>
@@ -784,10 +794,10 @@ function viewReveal() {
                   : 'Close-ish. Worth hearing why.';
     body = `<div class="ends" style="margin-top:6px"><span>${esc(card.l)}</span><span>${esc(card.r)}</span></div>
       <div class="track">
-        <div class="ring A" style="left:${B.guess}%"></div><div class="ring B" style="left:${A.guess}%"></div>
-        <div class="dot A" style="left:${A.self}%">${init('A')}</div><div class="dot B" style="left:${B.self}%">${init('B')}</div>
+        <div class="ring A lane-a" style="left:${B.guess}%"></div><div class="dot A lane-a" style="left:${A.self}%">${init('A')}</div>
+        <div class="ring B lane-b" style="left:${A.guess}%"></div><div class="dot B lane-b" style="left:${B.self}%">${init('B')}</div>
       </div>
-      <div class="legend"><span><i class="d"></i>where you each are</span><span><i class="r"></i>where the other guessed</span></div>
+      <div class="legend"><span><i class="d"></i>where each of you is</span><span><i class="r"></i>the other's guess about you</span></div>
       <div class="res">${order.map(r => {
         const o = other(r), g = S.ans[o].guess, actual = S.ans[r].self, c = closeness(g, actual);
         return `<div class="who ${r}"><span class="n">${nm(r)}</span> is at ${actual}
@@ -845,7 +855,7 @@ function miniTrack(s) {
   const {c, h} = s;
   return `<p style="margin:0 0 4px;font-weight:600">${esc(c.q)}</p>
     <div class="ends"><span>${esc(c.l)}</span><span>${esc(c.r)}</span></div>
-    <div class="track" style="height:40px"><div class="dot A" style="left:${h.ans.A.self}%;top:20px;width:22px;height:22px"></div><div class="dot B" style="left:${h.ans.B.self}%;top:20px;width:22px;height:22px"></div></div>`;
+    <div class="track"><div class="dot A lane-a" style="left:${h.ans.A.self}%;width:22px;height:22px"></div><div class="dot B lane-b" style="left:${h.ans.B.self}%;width:22px;height:22px"></div></div>`;
 }
 
 function viewEnd() {
@@ -927,7 +937,15 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => {
   const f = e.target.dataset && e.target.dataset.draft;
-  if (f) draft[f] = e.target.type === 'range' ? Number(e.target.value) : e.target.value;
+  if (!f) return;
+  draft[f] = e.target.type === 'range' ? Number(e.target.value) : e.target.value;
+  if (e.target.type === 'range') {
+    // Update in place rather than re-rendering, so the drag isn't interrupted.
+    draft.moved[f] = true; e.target.classList.remove('untouched');
+    const ok = draft.moved.self && draft.moved.guess;
+    const lock = $('[data-do="lock"]'); if (lock) lock.disabled = !ok;
+    const hint = $('#slide-hint'); if (hint) hint.hidden = ok;
+  }
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
