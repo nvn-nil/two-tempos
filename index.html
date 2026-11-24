@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5efe6">
+<title>Two Tempos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5efe6; --paper:#fffaf3; --ink:#2a2430; --muted:#857a83; --line:#e7ddd0;
+  --A:#4a63c9; --A-soft:#e3e8fb; --B:#de6340; --B-soft:#fbe5dc; --ok:#3d8f66;
+  --me:var(--A); --them:var(--B); --r:20px;
+}
+body.role-B{ --me:var(--B); --them:var(--A); }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+h1,h2,h3,.q,.code,.big,.brand{font-family:"Fraunces",Georgia,serif;font-weight:650;letter-spacing:-.015em}
+button,input,textarea{font:inherit;color:inherit}
+#top{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 6px;max-width:540px;margin:0 auto}
+.brand{font-size:19px} .brand b{color:var(--A);font-weight:inherit} .brand i{color:var(--B);font-style:normal}
+.pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--paper);border:1px solid var(--line);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.pill.on{color:var(--ok)} .pill.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+main{max-width:540px;margin:0 auto;padding:6px 18px calc(110px + env(safe-area-inset-bottom))}
+.hero{padding:34px 4px 6px}
+.hero h1{font-size:44px;line-height:1;margin:0 0 12px}
+.hero h1 b{color:var(--A);font-weight:inherit} .hero h1 i{color:var(--B);font-style:normal}
+.lede{color:#5d525b;font-size:17px;margin:0;max-width:30em}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:16px 0}
+.center{text-align:center}
+label.f{display:block;font-size:13px;color:var(--muted);margin-bottom:12px}
+label.f input{display:block;margin-top:6px}
+input[type=text],textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;outline:none;font-size:17px}
+input[type=text]:focus,textarea:focus{border-color:var(--me);box-shadow:0 0 0 3px color-mix(in srgb,var(--me) 15%,transparent)}
+textarea{resize:vertical;min-height:110px;line-height:1.45}
+.btn{display:block;width:100%;padding:15px 18px;border-radius:16px;border:1px solid var(--line);background:#fff;font-weight:600;font-size:17px;cursor:pointer;transition:transform .08s ease}
+.btn:active{transform:scale(.985)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.me{background:var(--me);border-color:var(--me);color:#fff}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);font-weight:500;font-size:15px;padding:10px}
+.row{display:flex;gap:10px} .row>*{flex:1} .row .btn{width:auto;flex:0 0 auto}
+.or{text-align:center;color:var(--muted);font-size:13px;margin:16px 0 10px}
+.fine{color:var(--muted);font-size:13px;text-align:center;margin:18px 0}
+.kicker{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:6px}
+.code{font-size:56px;letter-spacing:.14em;line-height:1.1;margin:4px 0 14px}
+.waiting{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--muted)}
+.breathe{width:10px;height:10px;border-radius:50%;background:var(--them);animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.7);opacity:.5}50%{transform:scale(1.25);opacity:1}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 13px;border-radius:99px;border:1px solid var(--line);background:#fff;font-size:14px;cursor:pointer}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip.ro{cursor:default}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg .chip{border-radius:14px;text-align:center;padding:10px 6px} .seg small{display:block;opacity:.7;font-size:12px}
+.progress{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:10px 2px 8px}
+.bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:16px}
+.bar div{height:100%;background:linear-gradient(90deg,var(--A),var(--B));border-radius:4px;transition:width .4s}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:26px;padding:26px 22px;margin-bottom:18px;box-shadow:0 10px 30px -18px rgba(60,40,30,.35)}
+.q{font-size:27px;line-height:1.18;margin:0}
+.sub{font-size:14px;font-weight:600;margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+.sub .sw{width:10px;height:10px;border-radius:50%;background:var(--me)} .sub .sw.t{background:var(--them)}
+input[type=range]{width:100%;height:36px;margin:0;accent-color:var(--me);cursor:pointer}
+input[type=range].t{accent-color:var(--them)}
+.ends{display:flex;justify-content:space-between;gap:16px;font-size:13px;color:var(--muted);margin-top:-2px}
+.ends span:last-child{text-align:right}
+.opts{display:grid;gap:8px}
+.opt{text-align:left;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:16px}
+.opt.on{border-color:var(--me);background:color-mix(in srgb,var(--me) 12%,#fff);box-shadow:inset 0 0 0 1px var(--me)}
+.opt.t.on{border-color:var(--them);background:color-mix(in srgb,var(--them) 12%,#fff);box-shadow:inset 0 0 0 1px var(--them)}
+.status{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--muted);font-size:14px;margin:14px 0}
+.status.done{color:var(--ok)}
+.locked{text-align:center;padding:10px 0}
+.locked .big{font-size:24px;margin:6px 0}
+.track{position:relative;height:56px;margin:8px 10px 0}
+.track::before{content:"";position:absolute;left:0;right:0;top:27px;height:3px;border-radius:3px;background:var(--line)}
+.dot,.ring{position:absolute;top:28px;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;transition:left .6s cubic-bezier(.2,.8,.2,1)}
+.dot{width:30px;height:30px;color:#fff;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.ring{width:22px;height:22px;background:var(--paper);border:3px dashed;z-index:1}
+.dot.A{background:var(--A)} .dot.B{background:var(--B)} .ring.A{border-color:var(--A)} .ring.B{border-color:var(--B)}
+.legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .d{width:10px;height:10px;border-radius:50%;background:var(--muted)} .legend .r{width:10px;height:10px;border-radius:50%;border:2px dashed var(--muted)}
+.res{display:grid;gap:10px;margin-top:16px}
+.who{border-radius:16px;padding:12px 14px;font-size:15px}
+.who.A{background:var(--A-soft)} .who.B{background:var(--B-soft)}
+.who .n{font-weight:700} .who.A .n{color:var(--A)} .who.B .n{color:var(--B)}
+.who .ans{font-size:17px;margin-top:4px;white-space:pre-wrap;word-wrap:break-word}
+.who .g{font-size:13px;color:#5d525b;margin-top:6px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:#fff;margin-left:6px;font-weight:600}
+.tag.y{color:var(--ok)} .tag.n{color:var(--muted)}
+.callout{margin-top:14px;font-size:15px;padding:12px 14px;border-radius:14px;background:#fff;border:1px dashed var(--line)}
+.talk{background:var(--ink);color:#fff;border-radius:20px;padding:18px 20px;margin:16px 0}
+.talk .kicker{color:#c9bfc7} .talk p{margin:0;font-family:"Fraunces",Georgia,serif;font-size:19px;line-height:1.3}
+.notes{display:grid;gap:8px;margin:10px 0}
+.note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:15px}
+.note small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.note.A{border-left:4px solid var(--A)} .note.B{border-left:4px solid var(--B)}
+.score{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.score .s{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px}
+.score .big{font-size:40px;line-height:1}
+.score .A .big{color:var(--A)} .score .B .big{color:var(--B)}
+.score .lbl{font-size:13px;color:var(--muted);margin-top:4px}
+#reacts{position:fixed;left:0;right:0;bottom:0;display:none;justify-content:center;gap:6px;
+  padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 60%,transparent)}
+#reacts.show{display:flex}
+#reacts button{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--paper);font-size:22px;cursor:pointer}
+#reacts button:active{transform:scale(.9)}
+#floaters{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
+.fl{position:absolute;bottom:70px;font-size:40px;animation:rise 2.6s ease-out forwards}
+.fl small{position:absolute;right:-6px;bottom:-2px;font-size:11px;font-weight:700;color:#fff;border-radius:99px;padding:1px 6px;font-family:system-ui}
+@keyframes rise{0%{transform:translateY(0) scale(.6);opacity:0}12%{opacity:1;transform:translateY(-30px) scale(1.1)}100%{transform:translateY(-62vh) scale(1);opacity:0}}
+#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-150%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;transition:transform .3s;z-index:60;max-width:90vw}
+#toast.show{transform:translate(-50%,0)}
+.linkish{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:14px;padding:6px}
+.spacer{height:10px}
+.pop{animation:pop .45s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes pop{0%{transform:scale(.96);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header id="top"><div class="brand">Two <b>Tem</b><i>pos</i></div><div id="conn"></div></header>
+<main id="app"></main>
+<div id="reacts"></div>
+<div id="floaters"></div>
+<div id="toast"></div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Content
+--------------------------------------------------------------------------- */
+const CATS = {
+  warmup:  'Warm-up',
+  energy:  'Energy & recharge',
+  plans:   'Plans vs. spontaneity',
+  love:    'Love & care',
+  playful: 'Playful',
+  deep:    'Deeper',
+};
+// type: s = spectrum (place yourself + guess partner), c = choice (pick + guess), o = open answer
+// d = depth (1 light .. 3 deep); decks run light to deep.
+const CARDS = [
+  {id:'bat', cat:'warmup', d:0, type:'s', q:'Your social battery right now', l:'Running on fumes', r:'Fully charged',
+   talk:'What would top it up a little tonight: quiet, or company?'},
+
+  // Warm-up
+  {id:'w1', cat:'warmup', d:1, type:'s', q:'Mornings', l:'Do not speak to me before coffee', r:'Up and chatty',
+   talk:'What does a good first hour of the day look like for you?'},
+  {id:'w2', cat:'warmup', d:1, type:'c', q:'A free Saturday. The first thing you want is…', o:['A long lie-in','A quiet walk alone','Coffee out with people','Whatever adventure shows up'],
+   talk:'How could a Saturday start so it works for both of you?'},
+  {id:'w3', cat:'warmup', d:1, type:'c', q:'At a party, you will usually be found…', o:['In the kitchen with two people','On the dance floor','Working the room','Befriending the host\'s pet'],
+   talk:'Where at a party do you two most naturally find each other?'},
+  {id:'w4', cat:'warmup', d:1, type:'o', q:'What is a tiny thing that reliably makes your day better?',
+   talk:'Could one of these become a small habit you do for each other?'},
+  {id:'w5', cat:'warmup', d:1, type:'s', q:'Phone calls', l:'Only if someone is in danger', r:'I love a long chat',
+   talk:'What is your favourite way to hear from each other during the day?'},
+
+  // Energy & recharge
+  {id:'e1', cat:'energy', d:1, type:'s', q:'Meeting new people', l:'Fun, but it drains me', r:'Gives me energy',
+   talk:'How do you each feel the day after a big social evening?'},
+  {id:'e2', cat:'energy', d:2, type:'s', q:'After a big night out I need…', l:'A whole day alone to recover', r:'Brunch to rehash everything',
+   talk:'How can you plan the day after a big night so both of you get what you need?'},
+  {id:'e3', cat:'energy', d:2, type:'c', q:'Best way to recharge', o:['Alone time','Quiet time with you','Time with friends','Doing something new'],
+   talk:'When you are recharging, how can the other one tell, and what helps?'},
+  {id:'e4', cat:'energy', d:2, type:'s', q:'Sitting in silence together', l:'Comfortable and lovely', r:'Feels like something is wrong',
+   talk:'What does a comfortable silence mean to each of you?'},
+  {id:'e5', cat:'energy', d:2, type:'o', q:'What is a sign you need alone time that your partner might miss?',
+   talk:'Agree on a word or signal for "I need a quiet hour, it is not about you".'},
+  {id:'e6', cat:'energy', d:2, type:'o', q:'What is a sign you are bored and need some excitement?',
+   talk:'What is a small, easy way to add a spark when that happens?'},
+  {id:'e7', cat:'energy', d:2, type:'c', q:'7pm text: "come out tonight?"', o:['Yes, on my way','Maybe, if it is small','Not tonight, ask me again','Already in pyjamas'],
+   talk:'What makes a last-minute invite feel exciting rather than like pressure?'},
+  {id:'e8', cat:'energy', d:1, type:'s', q:'Birthday plans', l:'Small dinner, favourite people', r:'Big party, everyone invited',
+   talk:'What would the perfect birthday for the other person look like?'},
+
+  // Plans vs spontaneity
+  {id:'p1', cat:'plans', d:1, type:'s', q:'Trip planning', l:'Every day mapped out', r:'Book a flight, figure it out there',
+   talk:'Design a trip together: which parts get planned and which stay open?'},
+  {id:'p2', cat:'plans', d:1, type:'s', q:'Last-minute change of plans', l:'Throws off my whole day', r:'Ooh, exciting',
+   talk:'How much warning is "enough" for each of you?'},
+  {id:'p3', cat:'plans', d:2, type:'s', q:'A surprise visit from friends', l:'Please text first', r:'The more the merrier',
+   talk:'Make a deal about drop-ins that works for you both.'},
+  {id:'p4', cat:'plans', d:1, type:'s', q:'Weekend pace', l:'Slow, nothing scheduled', r:'Packed with plans',
+   talk:'Try the half-and-half weekend: which half is planned, which half is free?'},
+  {id:'p5', cat:'plans', d:2, type:'s', q:'Making decisions', l:'I need time to think', r:'I decide in the moment',
+   talk:'How can the quick decider give the slow one room, and the other way round?'},
+  {id:'p6', cat:'plans', d:1, type:'c', q:'Holiday style', o:['Cabin with books','City break','Beach and nothing else','Backpacking, no plan'],
+   talk:'If you could only take one trip next year, what would you combine?'},
+  {id:'p7', cat:'plans', d:2, type:'o', q:'What is the most spontaneous thing you have ever done?',
+   talk:'Would you do it again? What would make it feel safe enough for the other one to join?'},
+  {id:'p8', cat:'plans', d:2, type:'c', q:'Which sounds worse?', o:['Being bored','Being overwhelmed'],
+   talk:'Tell a story of the last time you felt that way.'},
+
+  // Love & care
+  {id:'l1', cat:'love', d:2, type:'c', q:'After a rough day, the best thing your partner can do is…', o:['Give me some space','Make me food','Hug me and listen','Take me out to distract me'],
+   talk:'What should the other one do in the first five minutes when you get home upset?'},
+  {id:'l2', cat:'love', d:2, type:'c', q:'Which compliment lands hardest?', o:['You are so thoughtful','You are so much fun','You look amazing','I feel safe with you'],
+   talk:'Say the one you guessed out loud to each other. Mean it.'},
+  {id:'l3', cat:'love', d:2, type:'c', q:'You feel most loved through…', o:['Words','Quality time','Touch','Help with things','Little gifts'],
+   talk:'What is one recent moment you felt loved by the other?'},
+  {id:'l4', cat:'love', d:1, type:'s', q:'Affection in public', l:'Keep it private', r:'Hold my hand anywhere',
+   talk:'Where is the line for each of you, and does it change with who is around?'},
+  {id:'l5', cat:'love', d:1, type:'s', q:'Texting during the day', l:'A few meaningful messages', r:'A constant stream of memes',
+   talk:'What kind of message from the other one makes you smile most?'},
+  {id:'l6', cat:'love', d:2, type:'o', q:'What is something small your partner does that you love?',
+   talk:'Have you told them before? Tell them now.'},
+  {id:'l7', cat:'love', d:2, type:'o', q:'What makes you feel cared for when you are tired or drained?',
+   talk:'Save this one. You will need it on a bad week.'},
+  {id:'l8', cat:'love', d:2, type:'s', q:'Showing love', l:'Quiet acts and presence', r:'Big gestures and words',
+   talk:'What is a gesture from the other that you might have missed because it was not your style?'},
+  {id:'l9', cat:'love', d:1, type:'c', q:'The gift you would love most', o:['Something handmade','An experience together','That thing I mentioned once','A surprise trip'],
+   talk:'Is there something you have mentioned once? Say it again, loudly.'},
+
+  // Playful
+  {id:'f1', cat:'playful', d:1, type:'c', q:'You win a free afternoon. You…', o:['Nap','Wander somewhere new','Call a friend','Start a hobby project'],
+   talk:'Plan a free afternoon together this month.'},
+  {id:'f2', cat:'playful', d:1, type:'c', q:'Something new to try together', o:['Cooking class','Dance class','A hiking trip','Pottery or something cosy'],
+   talk:'Pick one, any one. Put a date on it.'},
+  {id:'f3', cat:'playful', d:1, type:'s', q:'Karaoke', l:'I would rather move house', r:'Hand me the mic',
+   talk:'What is your song, if you had to?'},
+  {id:'f4', cat:'playful', d:1, type:'o', q:'Describe your perfect lazy day, hour by hour.',
+   talk:'Which hours could you share, and which would you keep for yourself?'},
+  {id:'f5', cat:'playful', d:1, type:'c', q:'Zombie apocalypse: your role in the group', o:['The planner','The one who runs in first','The medic','The one who befriends the zombies'],
+   talk:'Defend your answer.'},
+  {id:'f6', cat:'playful', d:1, type:'s', q:'Ordering at a new restaurant', l:'Same dish I always get', r:'Whatever sounds strangest',
+   talk:'Next date: you order for each other.'},
+
+  // Deeper
+  {id:'x1', cat:'deep', d:3, type:'s', q:'When you are upset, you want to…', l:'Have space, then talk', r:'Talk it through right now',
+   talk:'Make a plan for your next disagreement: how long a pause, and who comes back first?'},
+  {id:'x2', cat:'deep', d:3, type:'c', q:'When we disagree, you tend to…', o:['Go quiet','Get louder','Joke it off','Want to fix it immediately'],
+   talk:'What would help most when you are each in that mode?'},
+  {id:'x3', cat:'deep', d:3, type:'o', q:'When do you feel most like yourself?',
+   talk:'How can you make more room for that?'},
+  {id:'x4', cat:'deep', d:3, type:'o', q:'What is something people often get wrong about you?',
+   talk:'Did your partner get it wrong too, at first?'},
+  {id:'x5', cat:'deep', d:3, type:'o', q:'What is something you want to try but feel nervous about?',
+   talk:'How could the other one make it feel easier?'},
+  {id:'x6', cat:'deep', d:3, type:'o', q:'What is a childhood memory that explains you a little?',
+   talk:'Ask one follow-up question each.'},
+  {id:'x7', cat:'deep', d:3, type:'o', q:'What is one way we are different that you secretly like?',
+   talk:'And one way you are alike that surprised you?'},
+  {id:'x8', cat:'deep', d:3, type:'o', q:'How can your partner invite you to things so it feels fun, not like pressure?',
+   talk:'Write each other\'s answer down. Literally. Tap "save" below.'},
+  {id:'x9', cat:'deep', d:3, type:'o', q:'What is one thing you want us to do together this month?',
+   talk:'Pick a date for one of them before you put the phones down.'},
+  {id:'x10',cat:'deep', d:3, type:'o', q:'When did you first think "I really like this person"?',
+   talk:'What did they do, exactly?'},
+];
+const BYID = Object.fromEntries(CARDS.map(c => [c.id, c]));
+const LENGTHS = [[8,'Short','~15 min'],[12,'An evening','~30 min'],[16,'Long night','~45 min']];
+const REACTS = ['❤️','😂','😮','🥹','🙌'];
+
+/* ---------------------------------------------------------------------------
+   Helpers
+--------------------------------------------------------------------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const other = r => r === 'A' ? 'B' : 'A';
+const clamp = (n, a, b) => Math.min(b, Math.max(a, Math.round(Number(n) || 0)));
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const store = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del: k => { try { localStorage.removeItem(k); } catch {} },
+};
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function newCode() {
+  const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  return Array.from(crypto.getRandomValues(new Uint8Array(4)), b => abc[b % abc.length]).join('');
+}
+
+/* ---------------------------------------------------------------------------
+   Game state (the room creator, role A, is the source of truth)
+--------------------------------------------------------------------------- */
+let session = store.get('tt-session');   // {room, role, name}
+let S = null;                            // game state (host: authoritative, guest: latest view)
+let T = null;                            // transport
+let peerOnline = false, link = 'idle', seq = 0, seenSeq = 0;
+let draft = {key: null};
+let ui = {};
+
+function initState(room, name) {
+  return {room, phase:'lobby', names:{A:name, B:null}, settings:{len:12, cats:Object.keys(CATS)},
+          deck:[], idx:0, ans:{}, ready:{}, history:[], notes:[]};
+}
+function buildDeck(st) {
+  const pool = shuffle(CARDS.filter(c => c.id !== 'bat' && st.cats.includes(c.cat)));
+  // Keep a mix of card types, then order light -> deep with a little randomness.
+  const pick = pool.slice(0, Math.max(0, st.len - 1));
+  pick.sort((a, b) => (a.d + Math.random() * 1.3) - (b.d + Math.random() * 1.3));
+  return ['bat', ...pick.map(c => c.id)];
+}
+function cleanAnswer(card, v) {
+  v = v || {};
+  if (card.type === 's') return {self: clamp(v.self, 0, 100), guess: clamp(v.guess, 0, 100)};
+  if (card.type === 'c') return {self: clamp(v.self, 0, card.o.length - 1), guess: clamp(v.guess, 0, card.o.length - 1)};
+  return {self: String(v.self || '').slice(0, 800)};
+}
+function reduce(role, a) {
+  const card = BYID[S.deck[S.idx]];
+  switch (a.k) {
+    case 'hello':
+      if (role === 'B' && a.name) S.names.B = String(a.name).slice(0, 24);
+      break;
+    case 'settings':
+      if (role !== 'A' || S.phase !== 'lobby') break;
+      if (LENGTHS.some(l => l[0] === a.len)) S.settings.len = a.len;
+      if (Array.isArray(a.cats)) S.settings.cats = a.cats.filter(c => CATS[c]);
+      break;
+    case 'start':
+      if (role !== 'A' || S.phase !== 'lobby' || !S.names.B || !S.settings.cats.length) break;
+      Object.assign(S, {deck: buildDeck(S.settings), idx: 0, phase: 'card', ans: {}, ready: {}, history: []});
+      break;
+    case 'answer':
+      if (S.phase !== 'card' || !card) break;
+      S.ans[role] = cleanAnswer(card, a.v);
+      if (S.ans.A && S.ans.B) S.phase = 'reveal';
+      break;
+    case 'unanswer':
+      if (S.phase === 'card') delete S.ans[role];
+      break;
+    case 'ready':
+      if (S.phase !== 'reveal') break;
+      S.ready[role] = !S.ready[role];
+      if (S.ready.A && S.ready.B) { S.history.push({id: S.deck[S.idx], ans: S.ans}); advance(); }
+      break;
+    case 'skip':
+      if (S.phase !== 'card') break;
+      S.lastSkip = {by: role, id: S.deck[S.idx], at: Date.now()};
+      advance();
+      break;
+    case 'note': {
+      const text = String(a.text || '').trim().slice(0, 300);
+      if (text) S.notes.push({by: role, text, card: S.deck[S.idx] || null, at: Date.now()});
+      break;
+    }
+    case 'finish':
+      if (S.phase === 'card' || S.phase === 'reveal') { if (S.phase === 'reveal') S.history.push({id: S.deck[S.idx], ans: S.ans}); S.phase = 'end'; }
+      break;
+    case 'again':
+      if (S.phase === 'end') Object.assign(S, {phase: 'lobby', deck: [], idx: 0, ans: {}, ready: {}, history: []});
+      break;
+  }
+}
+function advance() {
+  S.idx++; S.ans = {}; S.ready = {};
+  S.phase = S.idx >= S.deck.length ? 'end' : 'card';
+}
+// What the guest is allowed to see: never the host's answer before both have locked in.
+function viewForGuest() {
+  const v = JSON.parse(JSON.stringify(S));
+  if (v.phase === 'card' && v.ans.A) v.ans.A = {hidden: true};
+  return v;
+}
+function act(a) {
+  if (!session) return;
+  if (session.role === 'A') {
+    reduce('A', a); afterChange();
+  } else {
+    if (!peerOnline) { toast('Not connected yet, hang on a second…'); return; }
+    T && T.send({t: 'act', a});
+  }
+}
+function afterChange() {
+  store.set('tt-state-' + S.room, S);
+  broadcast(); render();
+}
+function broadcast() {
+  if (!T || session.role !== 'A') return;
+  seq = Math.max(seq + 1, Date.now());
+  T.send({t: 'state', seq, s: viewForGuest()});
+}
+
+/* ---------------------------------------------------------------------------
+   Transports: relay (our tiny server) or PeerJS (static hosting, peer to peer)
+--------------------------------------------------------------------------- */
+const handlers = {
+  msg(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'react') return floatEmoji(m.e, other(session.role));
+    if (session.role === 'A') {
+      if (m.t === 'act' && m.a) { reduce('B', m.a); afterChange(); }
+      else if (m.t === 'hello') { reduce('B', {k: 'hello', name: m.name}); afterChange(); }
+    } else if (m.t === 'state' && m.s && m.seq >= seenSeq) {
+      seenSeq = m.seq; const prevSkip = S && S.lastSkip; S = m.s;
+      if (S.lastSkip && (!prevSkip || prevSkip.at !== S.lastSkip.at) && S.lastSkip.by === 'A') toast(`${S.names.A} skipped a card`);
+      render();
+    }
+  },
+  peer(on) {
+    peerOnline = on;
+    if (on) {
+      if (session.role === 'A') broadcast();
+      else T.send({t: 'hello', name: session.name});
+    }
+    render();
+  },
+  status(s) { link = s; renderTop(); },
+};
+
+async function pickTransport() {
+  const q = new URLSearchParams(location.search).get('transport');
+  if (q === 'peer' || q === 'relay') return q;
+  if (location.protocol === 'file:') return 'peer';
+  try {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch('/api/ping', {signal: ctl.signal, cache: 'no-store'});
+    clearTimeout(tm);
+    if (r.ok && (await r.json()).ok) return 'relay';
+  } catch {}
+  return 'peer';
+}
+
+function relayTransport(room, role, h) {
+  const qs = `room=${encodeURIComponent(room)}&role=${role}`;
+  let es, dead = false;
+  const open = () => {
+    es = new EventSource('/api/events?' + qs);
+    es.onopen = () => h.status('ok');
+    es.onerror = () => { h.status('reconnecting'); if (peerOnline) h.peer(false); };
+    es.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.t === 'peer') h.peer(m.online); else h.msg(m); };
+  };
+  open();
+  // Phones kill background connections; reopen when we come back.
+  const check = () => { if (!dead && es.readyState === 2) open(); };
+  const iv = setInterval(check, 4000);
+  document.addEventListener('visibilitychange', check);
+  return {
+    kind: 'relay',
+    send(m) { fetch('/api/send?' + qs, {method: 'POST', body: JSON.stringify(m), headers: {'content-type': 'application/json'}}).catch(() => {}); },
+    close() { dead = true; clearInterval(iv); es.close(); },
+  };
+}
+
+function loadScript(src) {
+  return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+}
+async function peerTransport(room, role, h) {
+  if (!window.Peer) await loadScript('https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js');
+  const hostId = 'two-tempos-v1-' + room.toLowerCase();
+  let peer = null, conn = null, dead = false;
+  const wire = c => {
+    c.on('open', () => { if (conn && conn !== c) try { conn.close(); } catch {} conn = c; h.status('ok'); h.peer(true); });
+    c.on('data', d => h.msg(d));
+    c.on('close', () => { if (conn === c) { conn = null; h.peer(false); } });
+    c.on('error', () => {});
+  };
+  const tryConnect = () => { if (!conn && peer && peer.open) wire(peer.connect(hostId, {reliable: true})); };
+  const start = () => {
+    peer = role === 'A' ? new Peer(hostId) : new Peer();
+    peer.on('open', () => { h.status(role === 'A' ? 'ok' : 'searching'); if (role === 'B') tryConnect(); });
+    peer.on('connection', c => { if (role === 'A') wire(c); });
+    peer.on('error', e => {
+      if (e.type === 'unavailable-id') { h.status('reconnecting'); try { peer.destroy(); } catch {} }   // old tab still holds the id
+      else if (e.type === 'peer-unavailable') h.status('searching');
+      else h.status('reconnecting');
+    });
+  };
+  start();
+  const iv = setInterval(() => {
+    if (dead) return;
+    if (!peer || peer.destroyed) return start();
+    if (peer.disconnected) { try { peer.reconnect(); } catch {} return; }
+    if (role === 'B') tryConnect();
+  }, 4000);
+  return {
+    kind: 'peer',
+    send(m) { if (conn && conn.open) conn.send(m); },
+    close() { dead = true; clearInterval(iv); try { peer.destroy(); } catch {} },
+  };
+}
+
+async function connect() {
+  const kind = await pickTransport();
+  link = 'connecting'; renderTop();
+  try {
+    T = kind === 'relay' ? relayTransport(session.room, session.role, handlers)
+                         : await peerTransport(session.room, session.role, handlers);
+  } catch (e) {
+    link = 'error'; renderTop(); toast('Could not reach the connection service. Check your internet.');
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Room lifecycle
+--------------------------------------------------------------------------- */
+function nameInput() {
+  const n = ($('#name')?.value || '').trim().slice(0, 24);
+  if (!n) { toast('Add your name first'); $('#name')?.focus(); return null; }
+  store.set('tt-name', n);
+  return n;
+}
+function createRoom() {
+  const name = nameInput(); if (!name) return;
+  const room = newCode();
+  session = {room, role: 'A', name}; store.set('tt-session', session);
+  S = initState(room, name); store.set('tt-state-' + room, S);
+  enterRoom();
+}
+function joinRoom() {
+  const name = nameInput(); if (!name) return;
+  const room = (($('#code')?.value) || ui.joinCode || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{3,8}$/.test(room)) { toast('That code does not look right'); return; }
+  session = {room, role: 'B', name}; store.set('tt-session', session);
+  S = null; enterRoom();
+}
+function enterRoom() {
+  history.replaceState(null, '', location.pathname + '?room=' + session.room + (new URLSearchParams(location.search).get('transport') ? '&transport=' + new URLSearchParams(location.search).get('transport') : ''));
+  document.body.className = 'role-' + session.role;
+  if (session.role === 'A') S = store.get('tt-state-' + session.room) || initState(session.room, session.name);
+  render(); connect();
+}
+function leaveRoom() {
+  if (T) T.close();
+  if (session && session.role === 'A') store.del('tt-state-' + session.room);
+  store.del('tt-session');
+  location.href = location.pathname;
+}
+function shareLink() {
+  const url = location.origin + location.pathname + '?room=' + session.room;
+  const text = `Play Two Tempos with me? Room ${session.room}`;
+  if (navigator.share) navigator.share({title: 'Two Tempos', text, url}).catch(() => {});
+  else navigator.clipboard.writeText(url).then(() => toast('Link copied'), () => toast(url));
+}
+
+/* ---------------------------------------------------------------------------
+   Rendering
+--------------------------------------------------------------------------- */
+const me = () => session.role;
+const nm = r => esc((S && S.names[r]) || (r === me() ? session.name : 'your partner'));
+const partner = () => nm(other(me()));
+const screenKey = () => !session ? 'home' : !S ? 'wait' : `${S.phase}:${S.idx}`;
+
+function renderTop() {
+  const c = $('#conn');
+  if (!session) { c.innerHTML = ''; return; }
+  const pn = S && S.names[other(me())];
+  if (peerOnline) c.innerHTML = `<span class="pill on">${esc(pn || 'partner')} is here</span>`;
+  else c.innerHTML = `<span class="pill">${link === 'reconnecting' ? 'reconnecting…' : pn ? esc(pn) + ' away' : 'room ' + esc(session.room)}</span>`;
+}
+
+let lastKey = null;
+function render() {
+  renderTop();
+  const app = $('#app');
+  const key = screenKey();
+  // Keep whatever is being typed when the partner's actions trigger a re-render.
+  const keep = {};
+  if (key === lastKey) app.querySelectorAll('input[id],textarea[id]').forEach(el => keep[el.id] = el.value);
+  const active = document.activeElement && document.activeElement.id;
+  const sel = active && document.activeElement.selectionStart != null ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  app.innerHTML = view();
+  for (const [id, v] of Object.entries(keep)) { const el = document.getElementById(id); if (el) el.value = v; }
+  if (key === lastKey && active) { const el = document.getElementById(active); if (el) { el.focus({preventScroll: true}); if (sel && el.setSelectionRange) try { el.setSelectionRange(...sel); } catch {} } }
+  if (key !== lastKey) { const first = app.firstElementChild; if (first) first.classList.add('pop'); window.scrollTo({top: 0}); }
+  lastKey = key;
+  const r = $('#reacts');
+  r.classList.toggle('show', !!(session && S && S.phase !== 'lobby'));
+  if (!r.innerHTML) r.innerHTML = REACTS.map(e => `<button data-do="react" data-e="${e}" aria-label="send ${e}">${e}</button>`).join('');
+}
+
+function view() {
+  if (!session) return viewHome();
+  if (!S) return viewConnecting();
+  switch (S.phase) {
+    case 'lobby': return viewLobby();
+    case 'card': return viewCard();
+    case 'reveal': return viewReveal();
+    case 'end': return viewEnd();
+  }
+  return '';
+}
+
+function viewHome() {
+  const name = esc(store.get('tt-name') || '');
+  const jc = ui.joinCode;
+  return `<div>
+  <section class="hero">
+    <h1>Two <b>Tem</b><i>pos</i></h1>
+    <p class="lede">A game for two phones. One of you loves a slow Sunday, one of you says yes before the question is finished. Find out how well you read each other.</p>
+  </section>
+  <div class="panel">
+    <label class="f">Your name<input type="text" id="name" maxlength="24" value="${name}" autocomplete="given-name" placeholder="e.g. Sam"></label>
+    ${jc ? `
+      <div class="kicker" style="margin-top:6px">Joining room</div>
+      <div class="code" style="font-size:40px">${esc(jc)}</div>
+      <button class="btn primary" data-do="join">Join</button>
+      <div class="center"><button class="linkish" data-do="forget-join">Start my own room instead</button></div>
+    ` : `
+      <button class="btn primary" data-do="create">Start a room</button>
+      <div class="or">or join your partner</div>
+      <div class="row"><input type="text" id="code" maxlength="8" placeholder="Room code" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase"><button class="btn" data-do="join">Join</button></div>
+    `}
+  </div>
+  <p class="fine">Each card: answer for yourself, guess for your partner. Nothing is shown until you have both locked in.</p>
+  </div>`;
+}
+
+function viewConnecting() {
+  return `<div><div class="panel center" style="margin-top:40px">
+    <div class="kicker">Room ${esc(session.room)}</div>
+    <h2 style="margin:6px 0 14px">Finding your partner…</h2>
+    <div class="waiting"><span class="breathe"></span> Waiting for the room's creator to be online</div>
+  </div>
+  <div class="center"><button class="linkish" data-do="leave">Leave room</button></div></div>`;
+}
+
+function viewLobby() {
+  const host = me() === 'A';
+  const st = S.settings;
+  const partnerHere = S.names.B && peerOnline;
+  const status = host
+    ? (S.names.B ? (peerOnline ? `<div class="status done">● ${nm('B')} has joined</div>` : `<div class="status"><span class="breathe"></span>${nm('B')} stepped away…</div>`)
+                 : `<div class="status"><span class="breathe"></span>Waiting for your partner to join</div>`)
+    : (peerOnline ? `<div class="status done">● You are in with ${nm('A')}</div>` : `<div class="status"><span class="breathe"></span>${nm('A')} stepped away…</div>`);
+  const lens = LENGTHS.map(([n, t, s]) => `<button class="chip ${st.len === n ? 'on' : ''} ${host ? '' : 'ro'}" ${host ? `data-do="len" data-n="${n}"` : ''}>${t}<small>${n} cards · ${s}</small></button>`).join('');
+  const cats = Object.entries(CATS).map(([k, t]) => `<button class="chip ${st.cats.includes(k) ? 'on' : ''} ${host ? '' : 'ro'}" ${host ? `data-do="cat" data-c="${k}"` : ''}>${t}</button>`).join('');
+  return `<div>
+    ${host ? `<div class="panel center">
+      <div class="kicker">Your room code</div>
+      <div class="code">${esc(S.room)}</div>
+      <button class="btn me" data-do="share">Send the link to your partner</button>
+      ${status}
+    </div>` : `<div class="panel center"><div class="kicker">Room ${esc(S.room)}</div>${status}
+      <p style="margin:6px 0 0;color:var(--muted)">${nm('A')} is choosing the deck. It starts on both phones at the same time.</p></div>`}
+    <div class="panel">
+      <div class="kicker">How long</div>
+      <div class="seg">${lens}</div>
+      <div class="kicker" style="margin-top:18px">What to talk about</div>
+      <div class="chips">${cats}</div>
+    </div>
+    ${host ? `<button class="btn primary" data-do="start" ${partnerHere && st.cats.length ? '' : 'disabled'}>${partnerHere ? 'Deal the first card' : 'Waiting for your partner…'}</button>` : ''}
+    <p class="fine">Tip: either of you can skip a card that does not feel right. No reason needed.</p>
+    <div class="center"><button class="linkish" data-do="leave">Leave room</button></div>
+  </div>`;
+}
+
+function cardHeader(card) {
+  const pct = Math.round((S.idx / S.deck.length) * 100);
+  return `<div class="progress"><span>Card ${S.idx + 1} of ${S.deck.length}</span><span>${CATS[card.cat]}</span></div>
+    <div class="bar"><div style="width:${pct}%"></div></div>`;
+}
+function ensureDraft() {
+  const key = S.room + ':' + S.idx;
+  if (draft.key !== key) {
+    const card = BYID[S.deck[S.idx]];
+    draft = {key, self: card.type === 's' ? 50 : card.type === 'c' ? null : '', guess: card.type === 's' ? 50 : null};
+  }
+}
+
+function viewCard() {
+  const card = BYID[S.deck[S.idx]];
+  ensureDraft();
+  const mine = S.ans[me()], theirs = S.ans[other(me())];
+  const pStatus = theirs ? `<div class="status done">● ${partner()} has locked in</div>` : `<div class="status"><span class="breathe"></span>${partner()} is thinking…</div>`;
+  let body = '';
+  if (mine) {
+    body = `<div class="locked"><div class="kicker">Locked in</div><div class="big">Waiting for ${partner()}</div></div>
+      ${pStatus}
+      <button class="btn ghost" data-do="unlock">Change my answer</button>`;
+  } else if (card.type === 's') {
+    body = `<div class="sub"><span class="sw"></span>Where are you?</div>
+      <input type="range" id="r-self" min="0" max="100" value="${draft.self}" data-draft="self">
+      <div class="ends"><span>${esc(card.l)}</span><span>${esc(card.r)}</span></div>
+      <div class="sub"><span class="sw t"></span>Where do you think ${partner()} is?</div>
+      <input type="range" class="t" id="r-guess" min="0" max="100" value="${draft.guess}" data-draft="guess">
+      <div class="ends"><span>${esc(card.l)}</span><span>${esc(card.r)}</span></div>
+      <div class="spacer"></div>${pStatus}
+      <button class="btn me" data-do="lock">Lock in</button>`;
+  } else if (card.type === 'c') {
+    const opts = (f, cls) => card.o.map((t, i) => `<button class="opt ${cls} ${draft[f] === i ? 'on' : ''}" data-do="pick" data-f="${f}" data-i="${i}">${esc(t)}</button>`).join('');
+    body = `<div class="sub"><span class="sw"></span>Your answer</div><div class="opts">${opts('self', '')}</div>
+      <div class="sub"><span class="sw t"></span>What will ${partner()} say?</div><div class="opts">${opts('guess', 't')}</div>
+      <div class="spacer"></div>${pStatus}
+      <button class="btn me" data-do="lock" ${draft.self == null || draft.guess == null ? 'disabled' : ''}>Lock in</button>`;
+  } else {
+    body = `<div class="sub"><span class="sw"></span>Your answer</div>
+      <textarea id="t-self" data-draft="self" placeholder="Take your time. ${partner()} sees this only once you have both answered.">${esc(draft.self)}</textarea>
+      <div class="spacer"></div>${pStatus}
+      <button class="btn me" data-do="lock">Lock in</button>`;
+  }
+  return `<div>${cardHeader(card)}
+    <div class="card"><p class="q">${esc(card.q)}</p></div>
+    ${body}
+    <div class="center" style="margin-top:8px"><button class="linkish" data-do="skip">Skip this card</button></div>
+  </div>`;
+}
+
+function closeness(a, b) { return Math.max(0, 100 - Math.abs(a - b)); }
+
+function viewReveal() {
+  const card = BYID[S.deck[S.idx]];
+  const A = S.ans.A, B = S.ans.B;
+  const order = [me(), other(me())];
+  let body = '';
+  if (card.type === 's') {
+    const init = r => esc(((S.names[r] || '?')[0] || '?').toUpperCase());
+    const gap = Math.abs(A.self - B.self);
+    const callout = gap >= 45 ? 'Different tempos on this one. What would meeting in the middle look like?'
+                  : gap <= 12 ? 'Totally in sync here.'
+                  : 'Close-ish. Worth hearing why.';
+    body = `<div class="ends" style="margin-top:6px"><span>${esc(card.l)}</span><span>${esc(card.r)}</span></div>
+      <div class="track">
+        <div class="ring A" style="left:${B.guess}%"></div><div class="ring B" style="left:${A.guess}%"></div>
+        <div class="dot A" style="left:${A.self}%">${init('A')}</div><div class="dot B" style="left:${B.self}%">${init('B')}</div>
+      </div>
+      <div class="legend"><span><i class="d"></i>where you each are</span><span><i class="r"></i>where the other guessed</span></div>
+      <div class="res">${order.map(r => {
+        const o = other(r), g = S.ans[o].guess, actual = S.ans[r].self, c = closeness(g, actual);
+        return `<div class="who ${r}"><span class="n">${nm(r)}</span> is at ${actual}
+          <div class="g">${nm(o)} guessed ${g} <span class="tag ${c >= 80 ? 'y' : 'n'}">${c}% close</span></div></div>`;
+      }).join('')}</div>
+      <div class="callout">${callout}</div>`;
+  } else if (card.type === 'c') {
+    body = `<div class="res">${order.map(r => {
+      const o = other(r), hit = S.ans[o].guess === S.ans[r].self;
+      return `<div class="who ${r}"><span class="n">${nm(r)}</span><div class="ans">${esc(card.o[S.ans[r].self])}</div>
+        <div class="g">${nm(o)} guessed “${esc(card.o[S.ans[o].guess])}” <span class="tag ${hit ? 'y' : 'n'}">${hit ? 'read you' : 'not quite'}</span></div></div>`;
+    }).join('')}</div>
+    ${A.self === B.self ? '<div class="callout">Same answer.</div>' : ''}`;
+  } else {
+    body = `<div class="res">${order.map(r => `<div class="who ${r}"><span class="n">${nm(r)}</span><div class="ans">${esc(S.ans[r].self) || '<i>(left blank)</i>'}</div></div>`).join('')}</div>`;
+  }
+  const notes = S.notes.filter(n => n.card === card.id);
+  const readyMe = S.ready[me()], readyThem = S.ready[other(me())];
+  return `<div>${cardHeader(card)}
+    <div class="card"><p class="q">${esc(card.q)}</p>${body}</div>
+    <div class="talk"><div class="kicker">Talk about it</div><p>${esc(card.talk)}</p></div>
+    <div class="panel">
+      <div class="kicker">Something to remember about each other</div>
+      ${notes.length ? `<div class="notes">${notes.map(noteHtml).join('')}</div>` : ''}
+      <div class="row"><input type="text" id="note" maxlength="300" placeholder="e.g. Text before dropping by"><button class="btn" data-do="note">Save</button></div>
+    </div>
+    ${readyThem ? `<div class="status done">● ${partner()} is ready for the next card</div>` : ''}
+    <button class="btn ${readyMe ? '' : 'me'}" data-do="ready">${readyMe ? `Waiting for ${partner()}… (tap to stay)` : 'Ready for the next card'}</button>
+    <div class="center" style="margin-top:6px"><button class="linkish" data-do="finish">End the game here</button></div>
+  </div>`;
+}
+const noteHtml = n => `<div class="note ${n.by}">${esc(n.text)}<small>${nm(n.by)}${n.card && BYID[n.card] ? ' · ' + esc(BYID[n.card].q) : ''}</small></div>`;
+
+function summary() {
+  const acc = {A: [], B: []};   // how well each person read the other
+  const spectra = [];
+  for (const h of S.history) {
+    const c = BYID[h.id]; if (!c || !h.ans.A || !h.ans.B) continue;
+    for (const r of ['A', 'B']) {
+      const o = other(r);
+      if (c.type === 's') acc[r].push(closeness(h.ans[r].guess, h.ans[o].self));
+      if (c.type === 'c') acc[r].push(h.ans[r].guess === h.ans[o].self ? 100 : 0);
+    }
+    if (c.type === 's' && c.id !== 'bat') spectra.push({c, gap: Math.abs(h.ans.A.self - h.ans.B.self), h});
+  }
+  const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
+  spectra.sort((x, y) => x.gap - y.gap);
+  const synced = spectra.length && spectra[0].gap <= 20 ? spectra[0] : null;
+  const last = spectra[spectra.length - 1];
+  const apart = last && last.gap >= 30 && last !== synced ? last : null;
+  return {read: {A: avg(acc.A), B: avg(acc.B)}, synced, apart};
+}
+
+function miniTrack(s) {
+  const {c, h} = s;
+  return `<p style="margin:0 0 4px;font-weight:600">${esc(c.q)}</p>
+    <div class="ends"><span>${esc(c.l)}</span><span>${esc(c.r)}</span></div>
+    <div class="track" style="height:40px"><div class="dot A" style="left:${h.ans.A.self}%;top:20px;width:22px;height:22px"></div><div class="dot B" style="left:${h.ans.B.self}%;top:20px;width:22px;height:22px"></div></div>`;
+}
+
+function viewEnd() {
+  const s = summary();
+  const sc = r => `<div class="s ${r}"><div class="big">${s.read[r] == null ? '–' : s.read[r] + '%'}</div><div class="lbl">how well ${nm(r)} read ${nm(other(r))}</div></div>`;
+  return `<div>
+    <section class="hero" style="padding-top:18px"><h1 style="font-size:36px">That's the deck.</h1>
+    <p class="lede">${S.history.length} cards played together.</p></section>
+    <div class="score">${sc('A')}${sc('B')}</div>
+    ${s.synced ? `<div class="panel"><div class="kicker">Most in sync</div>${miniTrack(s.synced)}</div>` : ''}
+    ${s.apart ? `<div class="panel"><div class="kicker">Most different tempo</div>${miniTrack(s.apart)}
+      <div class="callout">Not a problem to fix. A thing to plan around: whose way, when?</div></div>` : ''}
+    <div class="panel"><div class="kicker">Things to remember about each other</div>
+      ${S.notes.length ? `<div class="notes">${S.notes.map(noteHtml).join('')}</div>
+        <button class="btn" data-do="copy" style="margin-top:10px">Copy our notes</button>`
+        : '<p style="margin:0;color:var(--muted)">No notes saved this time. Next round, tap "Save" on the cards that matter.</p>'}
+    </div>
+    <button class="btn primary" data-do="again">Play another round</button>
+    <div class="center" style="margin-top:6px"><button class="linkish" data-do="leave">Leave room</button></div>
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------------
+   Interaction
+--------------------------------------------------------------------------- */
+function floatEmoji(e, from) {
+  if (!REACTS.includes(e)) return;
+  const el = document.createElement('div');
+  el.className = 'fl';
+  el.style.left = (12 + Math.random() * 70) + 'vw';
+  const name = (S && S.names[from]) || '';
+  el.innerHTML = `${e}<small style="background:var(--${from})">${esc(name.slice(0, 10))}</small>`;
+  $('#floaters').appendChild(el);
+  setTimeout(() => el.remove(), 2700);
+  if (from !== me() && navigator.vibrate) navigator.vibrate(30);
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-do]'); if (!b) return;
+  const d = b.dataset.do;
+  switch (d) {
+    case 'create': return createRoom();
+    case 'join': return joinRoom();
+    case 'forget-join': ui.joinCode = null; history.replaceState(null, '', location.pathname); return render();
+    case 'leave': return leaveRoom();
+    case 'share': return shareLink();
+    case 'len': return act({k: 'settings', len: Number(b.dataset.n)});
+    case 'cat': {
+      const c = b.dataset.c, cats = S.settings.cats.includes(c) ? S.settings.cats.filter(x => x !== c) : [...S.settings.cats, c];
+      return act({k: 'settings', cats});
+    }
+    case 'start': return act({k: 'start'});
+    case 'pick': draft[b.dataset.f] = Number(b.dataset.i); return render();
+    case 'lock': {
+      const card = BYID[S.deck[S.idx]];
+      if (card.type === 'o' && !String(draft.self).trim()) { toast('Write a little something first'); return; }
+      return act({k: 'answer', v: {self: draft.self, guess: draft.guess}});
+    }
+    case 'unlock': return act({k: 'unanswer'});
+    case 'skip': return act({k: 'skip'});
+    case 'ready': return act({k: 'ready'});
+    case 'finish': return act({k: 'finish'});
+    case 'again': return act({k: 'again'});
+    case 'note': {
+      const inp = $('#note'); const text = inp.value.trim(); if (!text) return;
+      inp.value = ''; act({k: 'note', text}); toast('Saved'); return;
+    }
+    case 'copy': {
+      const txt = S.notes.map(n => `• ${n.text} (${S.names[n.by] || ''})`).join('\n');
+      navigator.clipboard.writeText('Two Tempos: things to remember\n\n' + txt).then(() => toast('Copied'), () => toast('Copy failed'));
+      return;
+    }
+    case 'react': {
+      const em = b.dataset.e; floatEmoji(em, me());
+      if (T && peerOnline) T.send({t: 'react', e: em});
+      return;
+    }
+  }
+});
+document.addEventListener('input', e => {
+  const f = e.target.dataset && e.target.dataset.draft;
+  if (f) draft[f] = e.target.type === 'range' ? Number(e.target.value) : e.target.value;
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.target.id === 'note') { e.preventDefault(); $('[data-do="note"]').click(); }
+  if (e.target.id === 'code' || (e.target.id === 'name' && ui.joinCode)) { e.preventDefault(); joinRoom(); }
+});
+
+/* ---------------------------------------------------------------------------
+   Boot
+--------------------------------------------------------------------------- */
+(function boot() {
+  const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+  if (session && (!urlRoom || urlRoom === session.room)) return enterRoom();
+  ui.joinCode = urlRoom || null;
+  render();
+})();
+</script>
+</body>
+</html>
