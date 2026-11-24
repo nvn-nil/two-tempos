@@ -26,6 +26,9 @@ button,input,textarea{font:inherit;color:inherit}
 .brand{font-size:19px} .brand b{color:var(--A);font-weight:inherit} .brand i{color:var(--B);font-style:normal}
 .pill{font-size:13px;padding:5px 11px;border-radius:99px;background:var(--paper);border:1px solid var(--line);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
 .pill.on{color:var(--ok)} .pill.on::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.topr{display:flex;gap:6px;align-items:center}
+.leave{font-size:13px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+.leave.sure{background:var(--ink);color:#fff;border-color:var(--ink)}
 main{max-width:540px;margin:0 auto;padding:6px 18px calc(110px + env(safe-area-inset-bottom))}
 .hero{padding:34px 4px 6px}
 .hero h1{font-size:44px;line-height:1;margin:0 0 12px}
@@ -735,6 +738,7 @@ const handlers = {
   msg(m) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'react') return floatEmoji(m.e, other(session.role));
+    if (m.t === 'end') return leaveRoom(String(m.name || 'Your partner').slice(0, 24));
     if (session.role === 'A') {
       if (m.t === 'act' && m.a) { reduce('B', m.a); afterChange(); }
       else if (m.t === 'hello') { reduce('B', {k: 'hello', name: m.name}); afterChange(); }
@@ -942,11 +946,14 @@ function enterRoom() {
   }
   render(); connect();
 }
-function leaveRoom() {
-  if (T) T.close();
+// Leaving ends the room for both phones: the partner is told and sent home too.
+function leaveRoom(byPartner) {
+  if (!byPartner && T && peerOnline) T.send({t: 'end', name: session.name});
   if (session && session.role === 'A') store.del('tt-state-' + session.room);
   store.del('tt-session');
-  location.href = location.pathname;
+  try { sessionStorage.setItem('tt-ended', byPartner ? `${byPartner} ended the room.` : 'You left the room.'); } catch {}
+  // Give the goodbye a moment to reach the other phone before this page goes.
+  setTimeout(() => { if (T) T.close(); location.href = location.pathname; }, byPartner ? 0 : 700);
 }
 function shareLink() {
   const url = location.origin + location.pathname + '?room=' + session.room;
@@ -967,8 +974,13 @@ function renderTop() {
   const c = $('#conn');
   if (!session) { c.innerHTML = ''; return; }
   const pn = S && S.names[other(me())];
-  if (peerOnline) c.innerHTML = `<span class="pill on">${esc(pn || 'partner')} is here</span>`;
-  else c.innerHTML = `<span class="pill">${link === 'reconnecting' ? 'reconnecting…' : pn ? esc(pn) + ' away' : 'room ' + esc(session.room)}</span>`;
+  const pill = peerOnline ? `<span class="pill on">${esc(pn || 'partner')} is here</span>`
+    : `<span class="pill">${link === 'reconnecting' ? 'reconnecting…' : pn ? esc(pn) + ' away' : 'room ' + esc(session.room)}</span>`;
+  // Two taps to leave, so a stray tap never ends the evening.
+  const leave = ui.confirmLeave
+    ? `<button class="leave sure" data-do="leave">End for both?</button>`
+    : `<button class="leave" data-do="ask-leave">Leave</button>`;
+  c.innerHTML = `<div class="topr">${pill}${leave}</div>`;
 }
 
 let lastKey = null;
@@ -1345,6 +1357,10 @@ document.addEventListener('click', e => {
     case 'join': return joinRoom();
     case 'forget-join': ui.joinCode = null; history.replaceState(null, '', location.pathname); return render();
     case 'leave': return leaveRoom();
+    case 'ask-leave':
+      ui.confirmLeave = true; renderTop();
+      clearTimeout(ui.leaveTimer); ui.leaveTimer = setTimeout(() => { ui.confirmLeave = false; renderTop(); }, 4000);
+      return;
     case 'share': return shareLink();
     case 'len': return act({k: 'settings', len: Number(b.dataset.n)});
     case 'cat': {
@@ -1413,6 +1429,7 @@ document.addEventListener('keydown', e => {
   if (session && (!urlRoom || urlRoom === session.room)) return enterRoom();
   ui.joinCode = urlRoom || null;
   render();
+  try { const msg = sessionStorage.getItem('tt-ended'); if (msg) { sessionStorage.removeItem('tt-ended'); toast(msg); } } catch {}
 })();
 </script>
 </body>
